@@ -25,7 +25,7 @@ export class User {
     @Column('timestamp with time zone', { name: 'create_at' })
     createdAt: Date;
 
-    @Column('timestamp with time zone', { name: 'update_at' })
+    @Column('timestamp with time zone', { name: 'update_at', nullable: true })
     updatedAt: Date;
 
     @Column('int2', { name: 'state_id' })

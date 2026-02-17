@@ -7,7 +7,7 @@ import { ConfigService } from "@nestjs/config";
 import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { User } from "src/user/entities/user.entity";
 import { JwtPayload } from "src/commons/interfaces/jwt-payload.interface";
-import { StatesEnum } from "src/commons/enums/states.enum";
+import { StatusEnum } from "src/commons/enums/status.enum";
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy( Strategy ) {
@@ -31,7 +31,7 @@ export class JwtStrategy extends PassportStrategy( Strategy ) {
 
         if( !user )
             throw new UnauthorizedException('Token not valid')
-        if ( user.stateId === StatesEnum.INACTIVE)
+        if ( user.stateId === StatusEnum.INACTIVE)
             throw new UnauthorizedException('User is inactive, talk with an admin')
 
         return user;

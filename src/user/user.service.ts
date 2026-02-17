@@ -7,7 +7,7 @@ import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { CustomExceptions } from 'src/commons/exceptions/custom-exceptions';
-import { StatesEnum } from 'src/commons/enums/states.enum';
+import { StatusEnum } from 'src/commons/enums/status.enum';
 import { JwtPayload } from 'src/commons/interfaces/jwt-payload.interface';
 import { LoginUserDto } from './dto/login-user.dto';
 
@@ -27,12 +27,11 @@ export class UserService {
     }
     const user = this.userRepository.create({
       ...createUserDto,
-      stateId: StatesEnum.ACTIVE,
+      stateId: StatusEnum.ACTIVE,
       createdAt: new Date(),
       roleId: 1
     });
     user.password = await bcrypt.hash(user.password, 10);
-    delete user.password;
     return this.userRepository.save(user);
   }
 

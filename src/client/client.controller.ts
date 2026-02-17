@@ -2,7 +2,10 @@ import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/commo
 import { ClientService } from './client.service';
 import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
+import { Auth } from 'src/user/decorators/auth.decorator';
+import { Roles } from 'src/commons/enums/roles.enum';
 
+@Auth()
 @Controller('client')
 export class ClientController {
   constructor(private readonly clientService: ClientService) {}
@@ -28,6 +31,7 @@ export class ClientController {
   }
 
   @Delete(':id')
+  @Auth( Roles.administrator )
   remove(@Param('id') id: string) {
     return this.clientService.remove(id);
   }

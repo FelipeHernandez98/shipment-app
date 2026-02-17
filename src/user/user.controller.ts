@@ -23,6 +23,11 @@ export class UserController {
     return this.userService.findAll();
   }
 
+  @Get(':id')
+  findOneUser(@Param('id') id: string) {
+    return this.userService.findOne(id);
+  }
+
   @Get('findById')
   @Auth( Roles.administrator , Roles.user )
   findOne(
