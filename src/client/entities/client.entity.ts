@@ -1,5 +1,6 @@
-import { BeforeInsert, Column, Entity, PrimaryColumn } from 'typeorm';
+import { BeforeInsert, Column, Entity, OneToMany, PrimaryColumn } from 'typeorm';
 import { v7 as uuidv7 } from "uuid";
+import { Shipment } from '../../shipment/entities/shipment.entity';
 
 @Entity('client', { schema: 'shipmentschema' })
 export class Client {
@@ -36,6 +37,12 @@ export class Client {
 
     @Column('timestamp with time zone', { name: 'update_at', nullable: true })
     updatedAt: Date;
+
+    @OneToMany(() => Shipment, (shipment) => shipment.remitter)
+    shippmentsSent: Shipment[];
+
+    @OneToMany(() => Shipment, (shipment) => shipment.recipient)
+    shipmentsReceived: Shipment[];
 
     @BeforeInsert()
     checkFieldsBeforeInsert() {
