@@ -1,4 +1,5 @@
-import { BeforeInsert, Column, Entity, PrimaryColumn } from 'typeorm';
+import { Shipment } from 'src/shipment/entities/shipment.entity';
+import { BeforeInsert, Column, Entity, OneToMany, PrimaryColumn } from 'typeorm';
 import { v7 as uuidv7 } from "uuid";
 
 @Entity('user', { schema: 'shipmentschema' })
@@ -33,6 +34,9 @@ export class User {
 
     @Column('int2', { name: 'role_id' })
     roleId: number;
+
+    @OneToMany(() => Shipment, (shipment) => shipment.user)
+    shipments: Shipment[];
 
     @BeforeInsert()
     checkFieldsBeforeInsert() {

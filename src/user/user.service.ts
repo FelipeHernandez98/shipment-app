@@ -53,6 +53,9 @@ export class UserService {
   }
 
   async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
+    if (updateUserDto.password) {
+      updateUserDto.password = await bcrypt.hash(updateUserDto.password, 10);
+    }
     await this.userRepository.update(id, { ...updateUserDto });
     const updatedUser = await this.findOne(id);
     if (!updatedUser) {

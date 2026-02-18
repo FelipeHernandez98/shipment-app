@@ -5,7 +5,7 @@ import { UpdateClientDto } from './dto/update-client.dto';
 import { Auth } from 'src/user/decorators/auth.decorator';
 import { Roles } from 'src/commons/enums/roles.enum';
 
-@Auth()
+@Auth( Roles.administrator, Roles.user )
 @Controller('client')
 export class ClientController {
   constructor(private readonly clientService: ClientService) {}
@@ -26,8 +26,8 @@ export class ClientController {
   }
 
   @Patch(':id')
-  update(@Param('id') documentNumber: string, @Body() updateClientDto: UpdateClientDto) {
-    return this.clientService.update(documentNumber, updateClientDto);
+  update(@Param('id') id: string, @Body() updateClientDto: UpdateClientDto) {
+    return this.clientService.update(id, updateClientDto);
   }
 
   @Delete(':id')

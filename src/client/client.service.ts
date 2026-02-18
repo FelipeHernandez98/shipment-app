@@ -35,16 +35,24 @@ export class ClientService {
   async findOne(documentNumber: string): Promise<Client> {
     const client = await this.clientRepository.findOne({ where: { documentNumber } });
     if (!client) {
-      throw CustomExceptions.UserNotFoundException(documentNumber);
+      throw CustomExceptions.ClientNotFoundException(documentNumber);
     }
     return client;
   }
 
-  async update(documentNumber: string, updateClientDto: UpdateClientDto) {
-    await this.clientRepository.update(documentNumber, { ...updateClientDto, updatedAt: new Date() });
-    const updatedClient = await this.findOne(documentNumber);
+  async findById(id: string): Promise<Client> {
+    const client = await this.clientRepository.findOne({ where: { id } });
+    if (!client) {
+      throw CustomExceptions.ClientNotFoundByIdException(id);
+    }
+    return client;
+  }
+
+  async update(id: string, updateClientDto: UpdateClientDto) {
+    await this.clientRepository.update(id, { ...updateClientDto, updatedAt: new Date() });
+    const updatedClient = await this.clientRepository.findOne({ where: { id } });
     if (!updatedClient) {
-      throw CustomExceptions.ClientNotFoundException(documentNumber);
+      throw CustomExceptions.ClientNotFoundException(id);
     }
     return updatedClient;
   }

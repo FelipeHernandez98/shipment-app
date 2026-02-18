@@ -29,24 +29,25 @@ export class TrackingSequenceService {
       const dateString = today.toISOString().split('T')[0]; // YYYY-MM-DD
 
       // Bloquear y obtener el registro del día (SELECT FOR UPDATE)
-      let trackingSeq = await queryRunner.manager.findOne(TrackingSequence, {
+      const trackingRepository = queryRunner.manager.getRepository(TrackingSequence);
+      let trackingSeq = await trackingRepository.findOne({
         where: { sequenceDate: dateString },
         lock: { mode: 'pessimistic_write' }, // Bloquea el registro para evitar race conditions
       });
 
       // Si no existe, crear uno nuevo
       if (!trackingSeq) {
-        trackingSeq = queryRunner.manager.create(TrackingSequence, {
+        trackingSeq = trackingRepository.create({
           sequenceDate: dateString,
           currentSequence: 0,
         });
-        trackingSeq = await queryRunner.manager.save(trackingSeq);
+        trackingSeq = await trackingRepository.save(trackingSeq);
       }
 
-      // Incrementar el consecutivo
-      trackingSeq.currentSequence += 1;
+      // Incrementar el consecutivo - Asegurar que es un número
+      trackingSeq.currentSequence = Number(trackingSeq.currentSequence) + 1;
       trackingSeq.updatedAt = new Date();
-      await queryRunner.manager.save(trackingSeq);
+      await trackingRepository.save(trackingSeq);
 
       // Confirmar la transacción
       await queryRunner.commitTransaction();

@@ -4,7 +4,7 @@ import { Column, Entity, PrimaryColumn, Unique } from 'typeorm';
 @Unique(['sequenceDate'])
 export class TrackingSequence {
   @PrimaryColumn('date', { name: 'sequence_date' })
-  sequenceDate: string; // Formato: YYYY-MM-DD
+  sequenceDate: string;
 
   @Column('bigint', { name: 'current_sequence', default: 0 })
   currentSequence: number;

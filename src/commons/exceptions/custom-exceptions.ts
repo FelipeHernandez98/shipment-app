@@ -30,4 +30,16 @@ export class CustomExceptions {
     static ClientNotFoundException(documentNumber: string): NotFoundException {
         return new NotFoundException(`Client with document number ${documentNumber} not found`);
     }
+
+    static ClientNotFoundByIdException(clientId: string): NotFoundException {
+        return new NotFoundException(`Client with id ${clientId} not found`);
+    }
+
+    static ShipmentNotFoundException(shipmentId: string): NotFoundException {
+        return new NotFoundException(`Shipment with id ${shipmentId} not found`);
+    }
+
+    static ShipmentNotFoundByTrackingCodeException(trackingCode: string): NotFoundException {
+        return new NotFoundException(`Shipment with tracking code ${trackingCode} not found`);
+    }
 }

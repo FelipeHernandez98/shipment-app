@@ -11,6 +11,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './user/entities/user.entity';
 import { Client } from './client/entities/client.entity';
 import { Shipment } from './shipment/entities/shipment.entity';
+import { TrackingSequence } from './shipment/entities/tracking-sequence.entity';
 
 @Module({
   imports: [
@@ -23,7 +24,7 @@ import { Shipment } from './shipment/entities/shipment.entity';
       username: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD,
       schema: process.env.DB_SCHEMA,
-      entities: [User, Client, Shipment],
+      entities: [User, Client, Shipment, TrackingSequence],
       synchronize: true,
     }),
     UserModule, ShipmentModule, PdfModule, CommonsModule, ClientModule],

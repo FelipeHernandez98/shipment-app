@@ -21,15 +21,13 @@ import { JwtModule } from '@nestjs/jwt';
       useFactory: ( configService: ConfigService ) => {
         return {
           secret: configService.get('JWT_SECRET'),
-          signOptions: {
-            expiresIn: '2h'
-          }
         }
       }
     })
   ],
   exports: [
     TypeOrmModule,
+    UserService,
     JwtStrategy,
     PassportModule,
     JwtModule

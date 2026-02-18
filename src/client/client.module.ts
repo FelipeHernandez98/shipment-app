@@ -11,6 +11,7 @@ import { PassportModule } from '@nestjs/passport';
   imports: [
     TypeOrmModule.forFeature([Client]),
     PassportModule
-  ]
+  ],
+  exports: [ClientService]
 })
 export class ClientModule {}

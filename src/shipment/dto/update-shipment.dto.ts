@@ -1,4 +1,16 @@
-import { PartialType } from '@nestjs/mapped-types';
-import { CreateShipmentDto } from './create-shipment.dto';
+import { IsString, IsNumber, IsOptional, MaxLength } from 'class-validator';
 
-export class UpdateShipmentDto extends PartialType(CreateShipmentDto) {}
+export class UpdateShipmentDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  packageDescription?: string;
+
+  @IsOptional()
+  @IsNumber()
+  locationId?: number;
+
+  @IsOptional()
+  @IsNumber()
+  statusId?: number;
+}
