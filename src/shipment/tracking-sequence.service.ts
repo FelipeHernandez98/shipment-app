@@ -26,7 +26,7 @@ export class TrackingSequenceService {
       const year = today.getFullYear();
       const month = String(today.getMonth() + 1).padStart(2, '0');
       const day = String(today.getDate()).padStart(2, '0');
-      const dateString = today.toISOString().split('T')[0]; // YYYY-MM-DD
+      const dateString = `${year}-${month}-${day}`; // YYYY-MM-DD (local date)
 
       // Bloquear y obtener el registro del día (SELECT FOR UPDATE)
       const trackingRepository = queryRunner.manager.getRepository(TrackingSequence);
@@ -69,10 +69,14 @@ export class TrackingSequenceService {
    * Obtiene el consecutivo actual del día (útil para debugging)
    */
   async getCurrentSequence(date?: Date): Promise<number> {
-    const today = date ? date.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+    const d = date || new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const dateString = `${y}-${m}-${dd}`;
     const trackingSeq = await this.trackingSequenceRepository.findOne({
-      where: { sequenceDate: today },
+      where: { sequenceDate: dateString },
     });
-    return trackingSeq?.currentSequence || 0;
+    return Number(trackingSeq?.currentSequence || 0);
   }
 }
