@@ -51,6 +51,9 @@ export class Shipment {
     @Column('int2', { name: 'status_id' })
     statusId: number;
 
+    @Column('character varying', { name: 'pdf_path', nullable: true })
+    pdfPath: string;
+
     @BeforeInsert()
     generateId() {
         this.id = uuidv7();

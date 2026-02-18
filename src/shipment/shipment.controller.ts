@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Res } from '@nestjs/common';
+import { Response } from 'express';
 import { ShipmentService } from './shipment.service';
 import { CreateShipmentDto } from './dto/create-shipment.dto';
 import { UpdateShipmentDto } from './dto/update-shipment.dto';
@@ -52,10 +53,11 @@ export class ShipmentController {
     return this.shipmentService.findByStatus(+statusId);
   }
 
-  @Get('location/:locationId')
+  @Get(':id/pdf')
   @Auth(Roles.administrator, Roles.user)
-  findByLocation(@Param('locationId') locationId: string) {
-    return this.shipmentService.findByLocation(+locationId);
+  async downloadPdf(@Param('id') id: string, @Res() res: Response) {
+    const pdfPath = await this.shipmentService.getPdfPath(id);
+    res.download(pdfPath, `shipment-${id}.pdf`);
   }
 
   @Patch(':id')

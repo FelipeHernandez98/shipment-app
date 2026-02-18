@@ -11,6 +11,7 @@ import { UserService } from 'src/user/user.service';
 import { ClientService } from 'src/client/client.service';
 import { User } from 'src/user/entities/user.entity';
 import { Roles } from 'src/commons/enums/roles.enum';
+import { PdfService } from '../pdf/pdf.service';
 
 @Injectable()
 export class ShipmentService {
@@ -21,6 +22,7 @@ export class ShipmentService {
     private readonly userService: UserService,
     private readonly clientService: ClientService,
     private readonly trackingSequenceService: TrackingSequenceService,
+    private readonly pdfService: PdfService,
   ) {}
 
   async create(createShipmentDto: CreateShipmentDto) {
@@ -39,7 +41,20 @@ export class ShipmentService {
       statusId: StatusEnum.ACTIVE,
       sendDate: new Date(),
     });
-    return this.shipmentRepository.save(shipment);
+    const savedShipment = await this.shipmentRepository.save(shipment);
+
+    // Load relations for PDF
+    const shipmentWithRelations = await this.shipmentRepository.findOne({
+      where: { id: savedShipment.id },
+      relations: ['remitter', 'recipient'],
+    });
+
+    // Generate PDF
+    const pdfPath = await this.pdfService.generateShipmentGuide(shipmentWithRelations);
+    savedShipment.pdfPath = pdfPath;
+    await this.shipmentRepository.save(savedShipment);
+
+    return savedShipment;
   }
 
   async findAll(): Promise<Shipment[]> {
@@ -147,5 +162,13 @@ export class ShipmentService {
       throw CustomExceptions.ThereAreNoRecordsException();
     }
     return shipments;
+  }
+
+  async getPdfPath(id: string): Promise<string> {
+    const shipment = await this.shipmentRepository.findOne({ where: { id } });
+    if (!shipment || !shipment.pdfPath) {
+      throw CustomExceptions.PdfNotFoundException(id);
+    }
+    return shipment.pdfPath;
   }
 }

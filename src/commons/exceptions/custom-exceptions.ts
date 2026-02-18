@@ -42,4 +42,8 @@ export class CustomExceptions {
     static ShipmentNotFoundByTrackingCodeException(trackingCode: string): NotFoundException {
         return new NotFoundException(`Shipment with tracking code ${trackingCode} not found`);
     }
+
+    static PdfNotFoundException(shipmentId: string): NotFoundException {
+        return new NotFoundException(`PDF for shipment with id ${shipmentId} not found`);
+    }
 }
