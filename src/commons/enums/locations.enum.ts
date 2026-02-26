@@ -1,0 +1,7 @@
+export enum LocationsEnum {
+    BODEGA_CUCUTA = 0,
+    VIAJANDO_BUCARAMANGA = 1,
+    BODEGA_BUCARAMANGA = 2,
+    VIAJANDO_BOGOTA = 3,
+    BODEGA_BOGOTA = 4,
+}

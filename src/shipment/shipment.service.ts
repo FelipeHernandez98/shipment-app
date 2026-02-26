@@ -12,6 +12,7 @@ import { ClientService } from 'src/client/client.service';
 import { User } from 'src/user/entities/user.entity';
 import { Roles } from 'src/commons/enums/roles.enum';
 import { PdfService } from '../pdf/pdf.service';
+import { LocationsEnum } from 'src/commons/enums/locations.enum';
 
 @Injectable()
 export class ShipmentService {
@@ -37,7 +38,7 @@ export class ShipmentService {
     const shipment = this.shipmentRepository.create({
       ...createShipmentDto,
       trackingCode,
-      locationId: 0,
+      locationId: LocationsEnum.BODEGA_CUCUTA,
       statusId: StatusEnum.ACTIVE,
       sendDate: new Date(),
     });
