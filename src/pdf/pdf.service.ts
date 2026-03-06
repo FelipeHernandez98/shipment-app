@@ -15,7 +15,13 @@ export class PdfService {
   ) {}
 
   async generateShipmentGuide(shipment: Shipment): Promise<string> {
-    const browser = await puppeteer.launch();
+    const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+    const browser = await puppeteer.launch({
+      headless: true,
+      // Required in container environments that run as root (e.g. Railway).
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+      ...(executablePath ? { executablePath } : {}),
+    });
 
     try {
       const page = await browser.newPage();
