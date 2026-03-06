@@ -4,29 +4,53 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as bwipjs from 'bwip-js';
 import { Shipment } from '../shipment/entities/shipment.entity';
+import { StorageService } from '../storage/storage.service';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class PdfService {
-  private readonly pdfDir = path.join(process.cwd(), 'uploads', 'pdfs');
-
-  constructor() {
-    if (!fs.existsSync(this.pdfDir)) {
-      fs.mkdirSync(this.pdfDir, { recursive: true });
-    }
-  }
+  constructor(
+    private readonly storageService: StorageService,
+    private readonly configService: ConfigService,
+  ) {}
 
   async generateShipmentGuide(shipment: Shipment): Promise<string> {
     const browser = await puppeteer.launch();
-    const page = await browser.newPage();
 
-    const htmlContent = await this.generateHtmlTemplate(shipment);
+    try {
+      const page = await browser.newPage();
+      const htmlContent = await this.generateHtmlTemplate(shipment);
 
-    await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
-    const pdfPath = path.join(this.pdfDir, `${shipment.id}.pdf`);
-    await page.pdf({ path: pdfPath, format: 'A4', printBackground: true });
+      await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
 
-    await browser.close();
-    return pdfPath;
+      const pdfBuffer = await page.pdf({
+        format: 'A4',
+        printBackground: true,
+      });
+
+      const objectKey = this.buildObjectKey(shipment.id, shipment.sendDate);
+
+      await this.storageService.uploadPdf(Buffer.from(pdfBuffer), objectKey, {
+        metadata: {
+          shipmentId: shipment.id,
+          trackingCode: shipment.trackingCode,
+        },
+      });
+
+      return objectKey;
+    } finally {
+      await browser.close();
+    }
+  }
+
+  private buildObjectKey(shipmentId: string, sendDate?: Date | string): string {
+    const baseDate = sendDate ? new Date(sendDate) : new Date();
+    const year = baseDate.getFullYear();
+    const month = String(baseDate.getMonth() + 1).padStart(2, '0');
+    const pdfPrefix = this.configService.get<string>('r2.pdfPrefix') ?? 'shipments';
+    const normalizedPrefix = pdfPrefix.replace(/^\/+|\/+$/g, '');
+
+    return `${normalizedPrefix}/${year}/${month}/${shipmentId}.pdf`;
   }
 
   private async generateHtmlTemplate(shipment: Shipment): Promise<string> {
@@ -43,6 +67,7 @@ export class PdfService {
     const shipmentDate = shipment.sendDate
       ? new Date(shipment.sendDate).toLocaleDateString('es-CO')
       : 'N/A';
+    const formattedShipmentValue = this.formatShipmentValue(shipment.shipmentValue);
 
     return `
       <!DOCTYPE html>
@@ -278,17 +303,6 @@ export class PdfService {
       word-break: break-word;
     }
 
-    .status-badge {
-      display: inline-block;
-      background: #000;
-      color: #fff;
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-weight: 700;
-      letter-spacing: 0.4px;
-      font-size: 11px;
-    }
-
     .bottom-note {
       text-align: center;
       font-size: 10px;
@@ -377,8 +391,8 @@ export class PdfService {
         </div>
 
         <div class="meta-card">
-          <div class="meta-title">Estado</div>
-          <div class="meta-value"><span class="status-badge">${shipment.statusId === 1 ? 'ACTIVO' : 'ENTREGADO'}</span></div>
+          <div class="meta-title">Valor a cobrar</div>
+          <div class="meta-value">$ ${formattedShipmentValue}</div>
         </div>
       </div>
 
@@ -406,6 +420,21 @@ export class PdfService {
     });
 
     return `data:image/png;base64,${png.toString('base64')}`;
+  }
+
+  private formatShipmentValue(shipmentValue?: string): string {
+    if (!shipmentValue) return 'N/A';
+
+    const numericOnly = shipmentValue.replace(/[^\d]/g, '');
+    if (!numericOnly) return shipmentValue;
+
+    const parsedValue = Number(numericOnly);
+    if (Number.isNaN(parsedValue)) return shipmentValue;
+
+    return new Intl.NumberFormat('es-CO', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(parsedValue);
   }
 
   private getBrandLogoDataUrl(): string {

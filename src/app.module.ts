@@ -12,10 +12,16 @@ import { User } from './user/entities/user.entity';
 import { Client } from './client/entities/client.entity';
 import { Shipment } from './shipment/entities/shipment.entity';
 import { TrackingSequence } from './shipment/entities/tracking-sequence.entity';
+import r2Config from './config/r2.config';
+import { StorageModule } from './storage/storage.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot(),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: ['.env'],
+      load: [r2Config],
+    }),
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.DB_HOST,
@@ -24,10 +30,15 @@ import { TrackingSequence } from './shipment/entities/tracking-sequence.entity';
       username: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD,
       schema: process.env.DB_SCHEMA,
-      entities: [User, Client, Shipment, TrackingSequence],
-      synchronize: true,
+      entities: [User, Client, Shipment, TrackingSequence]
     }),
-    UserModule, ShipmentModule, PdfModule, CommonsModule, ClientModule],
+    UserModule,
+    ShipmentModule,
+    PdfModule,
+    CommonsModule,
+    ClientModule,
+    StorageModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })

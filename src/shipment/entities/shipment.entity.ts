@@ -74,6 +74,13 @@ export class Shipment {
     packageDescription: string;
 
     @ApiProperty({
+        description: 'Valor declarado del envío',
+        example: '$150000 COP'
+    })
+    @Column('character varying', { name: 'shipment_value', length: 50 , nullable: true})
+    shipmentValue: string;
+
+    @ApiProperty({
         description: 'Fecha de envío',
         example: '2023-10-01T12:00:00Z'
     })
@@ -111,8 +118,8 @@ export class Shipment {
     statusId: number;
 
     @ApiProperty({
-        description: 'Ruta del archivo PDF',
-        example: '/uploads/pdfs/shipment-uuid.pdf',
+        description: 'Referencia del PDF (object key en R2 o URL absoluta)',
+        example: 'shipments/2026/03/shipment-uuid.pdf',
         required: false
     })
     @Column('character varying', { name: 'pdf_path', nullable: true })

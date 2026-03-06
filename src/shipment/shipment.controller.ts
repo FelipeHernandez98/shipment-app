@@ -1,5 +1,7 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, Res } from '@nestjs/common';
 import { Response } from 'express';
+import * as fs from 'fs';
+import * as path from 'path';
 import { ShipmentService } from './shipment.service';
 import { CreateShipmentDto } from './dto/create-shipment.dto';
 import { UpdateShipmentDto } from './dto/update-shipment.dto';
@@ -7,7 +9,7 @@ import { Auth } from 'src/user/decorators/auth.decorator';
 import { GetUser } from 'src/user/decorators/get-user.decorator';
 import { Roles } from 'src/commons/enums/roles.enum';
 import { User } from 'src/user/entities/user.entity';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam, ApiBearerAuth, ApiProduces } from '@nestjs/swagger';
 import { Shipment } from './entities/shipment.entity';
 
 @ApiTags('shipments')
@@ -94,17 +96,45 @@ export class ShipmentController {
     return this.shipmentService.findByStatus(+statusId);
   }
 
+  @Get(':id')
+  @Auth(Roles.administrator, Roles.user)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Obtener envío por ID' })
+  @ApiParam({ name: 'id', description: 'ID del envío' })
+  @ApiResponse({ status: 200, description: 'Envío encontrado', type: Shipment })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @ApiResponse({ status: 404, description: 'Envío no encontrado' })
+  findOne(@Param('id') id: string) {
+    return this.shipmentService.findOne(id);
+  }
+
   @Get(':id/pdf')
   @Auth(Roles.administrator, Roles.user)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Descargar PDF del envío' })
+  @ApiOperation({ summary: 'Descargar PDF del envío (R2 o legado local)' })
+  @ApiProduces('application/pdf')
   @ApiParam({ name: 'id', description: 'ID del envío' })
   @ApiResponse({ status: 200, description: 'PDF descargado' })
+  @ApiResponse({ status: 302, description: 'Redirección a URL externa del PDF' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   @ApiResponse({ status: 404, description: 'Envío no encontrado' })
   async downloadPdf(@Param('id') id: string, @Res() res: Response) {
     const pdfPath = await this.shipmentService.getPdfPath(id);
-    res.download(pdfPath, `shipment-${id}.pdf`);
+
+    // Backward compatibility: legacy records may still point to a local file.
+    const legacyLocalPath = this.resolveLegacyLocalPdfPath(pdfPath);
+    if (legacyLocalPath) {
+      return res.download(legacyLocalPath, `shipment-${id}.pdf`);
+    }
+
+    if (/^https?:\/\//i.test(pdfPath)) {
+      return res.redirect(pdfPath);
+    }
+
+    const pdfBuffer = await this.shipmentService.getPdfBufferFromStorage(pdfPath);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="shipment-${id}.pdf"`);
+    return res.send(pdfBuffer);
   }
 
   @Patch(':id')
@@ -132,5 +162,25 @@ export class ShipmentController {
   @ApiResponse({ status: 404, description: 'Envío no encontrado' })
   remove(@Param('id') id: string) {
     return this.shipmentService.remove(id);
+  }
+
+  private resolveLegacyLocalPdfPath(pdfPath: string): string | null {
+    const normalizedPath = pdfPath.trim();
+    if (!normalizedPath) {
+      return null;
+    }
+
+    const possiblePaths = [
+      normalizedPath,
+      path.join(process.cwd(), normalizedPath.replace(/^\/+/, '')),
+    ];
+
+    for (const candidatePath of possiblePaths) {
+      if (fs.existsSync(candidatePath) && fs.statSync(candidatePath).isFile()) {
+        return candidatePath;
+      }
+    }
+
+    return null;
   }
 }

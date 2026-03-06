@@ -33,4 +33,14 @@ export class CreateShipmentDto {
   @MaxLength(100)
   packageDescription: string;
 
+  @ApiProperty({
+    description: 'Valor declarado del envío',
+    example: '$150000 COP',
+    maxLength: 50
+  })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(50)
+  shipmentValue: string;
+
 }

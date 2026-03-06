@@ -13,6 +13,7 @@ import { User } from 'src/user/entities/user.entity';
 import { Roles } from 'src/commons/enums/roles.enum';
 import { PdfService } from '../pdf/pdf.service';
 import { LocationsEnum } from 'src/commons/enums/locations.enum';
+import { StorageService } from 'src/storage/storage.service';
 
 @Injectable()
 export class ShipmentService {
@@ -24,6 +25,7 @@ export class ShipmentService {
     private readonly clientService: ClientService,
     private readonly trackingSequenceService: TrackingSequenceService,
     private readonly pdfService: PdfService,
+    private readonly storageService: StorageService,
   ) {}
 
   async create(createShipmentDto: CreateShipmentDto) {
@@ -60,7 +62,10 @@ export class ShipmentService {
 
   async findAll(): Promise<Shipment[]> {
     const shipments = await this.shipmentRepository.find({
-      relations: ['remitter', 'recipient', 'user']
+      relations: ['remitter', 'recipient', 'user'],
+      order: {
+        sendDate: 'DESC',
+      },
     });
     if (shipments.length === 0) {
       throw CustomExceptions.ThereAreNoRecordsException();
@@ -76,6 +81,19 @@ export class ShipmentService {
     if (!shipment) {
       throw CustomExceptions.ShipmentNotFoundByTrackingCodeException(trackingCode);
     }
+    return shipment;
+  }
+
+  async findOne(id: string): Promise<Shipment> {
+    const shipment = await this.shipmentRepository.findOne({
+      where: { id },
+      relations: ['remitter', 'recipient', 'user'],
+    });
+
+    if (!shipment) {
+      throw CustomExceptions.ShipmentNotFoundException(id);
+    }
+
     return shipment;
   }
 
@@ -171,5 +189,9 @@ export class ShipmentService {
       throw CustomExceptions.PdfNotFoundException(id);
     }
     return shipment.pdfPath;
+  }
+
+  async getPdfBufferFromStorage(key: string): Promise<Buffer> {
+    return this.storageService.getObjectBuffer(key);
   }
 }

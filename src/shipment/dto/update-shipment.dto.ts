@@ -31,4 +31,15 @@ export class UpdateShipmentDto {
   @IsOptional()
   @IsNumber()
   statusId?: number;
+
+  @ApiProperty({
+    description: 'Valor declarado del envío (opcional)',
+    example: '$150000 COP',
+    maxLength: 50,
+    required: false
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  shipmentValue?: string;
 }
