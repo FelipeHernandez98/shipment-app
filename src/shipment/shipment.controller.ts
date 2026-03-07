@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Res } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Res, Query, ParseIntPipe, ParseUUIDPipe, BadRequestException } from '@nestjs/common';
 import { Response } from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -9,8 +9,9 @@ import { Auth } from 'src/user/decorators/auth.decorator';
 import { GetUser } from 'src/user/decorators/get-user.decorator';
 import { Roles } from 'src/commons/enums/roles.enum';
 import { User } from 'src/user/entities/user.entity';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam, ApiBearerAuth, ApiProduces } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam, ApiBearerAuth, ApiProduces, ApiQuery } from '@nestjs/swagger';
 import { Shipment } from './entities/shipment.entity';
+import { ShipmentFinancialMetricsDto } from './dto/shipment-financial-metrics.dto';
 
 @ApiTags('shipments')
 @Controller('shipment')
@@ -46,6 +47,24 @@ export class ShipmentController {
   @ApiResponse({ status: 404, description: 'Envío no encontrado' })
   findByTrackingCode(@Param('trackingCode') trackingCode: string) {
     return this.shipmentService.findByTrackingCode(trackingCode);
+  }
+
+  @Get('metrics')
+  @Auth(Roles.administrator)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Obtener métricas financieras de envíos por mes (solo administradores)' })
+  @ApiQuery({ name: 'year', required: true, type: Number, example: 2026 })
+  @ApiQuery({ name: 'month', required: true, type: Number, example: 1 })
+  @ApiResponse({ status: 200, description: 'Métricas financieras calculadas', type: ShipmentFinancialMetricsDto })
+  @ApiResponse({ status: 400, description: 'Parámetros year/month inválidos' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @ApiResponse({ status: 403, description: 'Solo administradores' })
+  getFinancialMetrics(
+    @Query('year', ParseIntPipe) year: number,
+    @Query('month', ParseIntPipe) month: number,
+  ) {
+    this.validateYearAndMonth(year, month);
+    return this.shipmentService.getFinancialMetrics(year, month);
   }
 
   @Get('user/:userId')
@@ -104,7 +123,7 @@ export class ShipmentController {
   @ApiResponse({ status: 200, description: 'Envío encontrado', type: Shipment })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   @ApiResponse({ status: 404, description: 'Envío no encontrado' })
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.shipmentService.findOne(id);
   }
 
@@ -118,7 +137,7 @@ export class ShipmentController {
   @ApiResponse({ status: 302, description: 'Redirección a URL externa del PDF' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   @ApiResponse({ status: 404, description: 'Envío no encontrado' })
-  async downloadPdf(@Param('id') id: string, @Res() res: Response) {
+  async downloadPdf(@Param('id', ParseUUIDPipe) id: string, @Res() res: Response) {
     const pdfPath = await this.shipmentService.getPdfPath(id);
 
     // Backward compatibility: legacy records may still point to a local file.
@@ -147,7 +166,7 @@ export class ShipmentController {
   @ApiResponse({ status: 401, description: 'No autorizado' })
   @ApiResponse({ status: 404, description: 'Envío no encontrado' })
   @ApiBody({ type: UpdateShipmentDto })
-  update(@Param('id') id: string, @Body() updateShipmentDto: UpdateShipmentDto) {
+  update(@Param('id', ParseUUIDPipe) id: string, @Body() updateShipmentDto: UpdateShipmentDto) {
     return this.shipmentService.update(id, updateShipmentDto);
   }
 
@@ -160,7 +179,7 @@ export class ShipmentController {
   @ApiResponse({ status: 401, description: 'No autorizado' })
   @ApiResponse({ status: 403, description: 'No autorizado' })
   @ApiResponse({ status: 404, description: 'Envío no encontrado' })
-  remove(@Param('id') id: string) {
+  remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.shipmentService.remove(id);
   }
 
@@ -182,5 +201,15 @@ export class ShipmentController {
     }
 
     return null;
+  }
+
+  private validateYearAndMonth(year: number, month: number): void {
+    if (year < 2000 || year > 2100) {
+      throw new BadRequestException('Query param "year" must be between 2000 and 2100');
+    }
+
+    if (month < 1 || month > 12) {
+      throw new BadRequestException('Query param "month" must be between 1 and 12');
+    }
   }
 }

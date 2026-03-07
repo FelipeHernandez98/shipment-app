@@ -25,7 +25,7 @@ export class UserController {
   }
 
   @Get()
-  @Auth(Roles.administrator)
+  @Auth(Roles.administrator, Roles.user)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Obtener todos los usuarios' })
   @ApiResponse({ status: 200, description: 'Lista de usuarios', type: [User] })

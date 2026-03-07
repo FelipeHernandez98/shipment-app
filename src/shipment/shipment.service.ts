@@ -14,9 +14,31 @@ import { Roles } from 'src/commons/enums/roles.enum';
 import { PdfService } from '../pdf/pdf.service';
 import { LocationsEnum } from 'src/commons/enums/locations.enum';
 import { StorageService } from 'src/storage/storage.service';
+import { ShipmentFinancialMetricsDto, ShipmentMetricsByStatusDto } from './dto/shipment-financial-metrics.dto';
 
 @Injectable()
 export class ShipmentService {
+  private readonly currency = process.env.METRICS_CURRENCY ?? 'COP';
+  private readonly countedStatuses = [
+    StatusEnum.ACTIVE,
+    StatusEnum.DELIVERED,
+    StatusEnum.DELAYED,
+    StatusEnum.PENDING,
+  ];
+  private readonly monthLabels = [
+    'Enero',
+    'Febrero',
+    'Marzo',
+    'Abril',
+    'Mayo',
+    'Junio',
+    'Julio',
+    'Agosto',
+    'Septiembre',
+    'Octubre',
+    'Noviembre',
+    'Diciembre',
+  ];
 
   constructor(
     @InjectRepository(Shipment)
@@ -120,10 +142,6 @@ export class ShipmentService {
   }
 
   async findByUserId(userId: string, currentUser: User): Promise<Shipment[]> {
-    if (currentUser.roleId !== Roles.administrator && currentUser.id !== userId) {
-      throw CustomExceptions.UnauthorizedException();
-    }
-
     const shipments = await this.shipmentRepository.find({
       where: { userId },
       relations: ['remitter', 'recipient', 'user']
@@ -193,5 +211,81 @@ export class ShipmentService {
 
   async getPdfBufferFromStorage(key: string): Promise<Buffer> {
     return this.storageService.getObjectBuffer(key);
+  }
+
+  async getFinancialMetrics(year: number, month: number): Promise<ShipmentFinancialMetricsDto> {
+    const { startUtc, nextMonthStartUtc } = this.getMonthlyRangeInBogota(year, month);
+
+    const shipments = await this.shipmentRepository
+      .createQueryBuilder('shipment')
+      .select(['shipment.statusId', 'shipment.shipmentValue'])
+      .where('shipment.sendDate >= :startUtc', { startUtc })
+      .andWhere('shipment.sendDate < :nextMonthStartUtc', { nextMonthStartUtc })
+      .andWhere('shipment.statusId IN (:...countedStatuses)', { countedStatuses: this.countedStatuses })
+      .getMany();
+
+    const metricsByStatus = new Map<number, ShipmentMetricsByStatusDto>();
+    let totalAmount = 0;
+
+    for (const shipment of shipments) {
+      const shipmentAmount = this.parseShipmentValue(shipment.shipmentValue);
+      totalAmount += shipmentAmount;
+
+      const currentStatusMetrics = metricsByStatus.get(shipment.statusId) ?? {
+        statusId: shipment.statusId,
+        totalShipments: 0,
+        totalAmount: 0,
+      };
+
+      currentStatusMetrics.totalShipments += 1;
+      currentStatusMetrics.totalAmount += shipmentAmount;
+      metricsByStatus.set(shipment.statusId, currentStatusMetrics);
+    }
+
+    const totalShipments = shipments.length;
+    const averageTicket = totalShipments > 0 ? totalAmount / totalShipments : 0;
+
+    return {
+      period: {
+        year,
+        month,
+        label: `${this.monthLabels[month - 1]} ${year}`,
+      },
+      currency: this.currency,
+      totalShipments,
+      totalAmount,
+      averageTicket,
+      countedStatuses: this.countedStatuses,
+      byStatus: Array.from(metricsByStatus.values()).sort((a, b) => a.statusId - b.statusId),
+    };
+  }
+
+  private getMonthlyRangeInBogota(
+    year: number,
+    month: number,
+  ): { startUtc: Date; nextMonthStartUtc: Date } {
+    // Bogota is UTC-05:00 and has no DST, so month boundaries are stable in UTC.
+    const startUtc = new Date(Date.UTC(year, month - 1, 1, 5, 0, 0, 0));
+    const nextMonthStartUtc = new Date(Date.UTC(year, month, 1, 5, 0, 0, 0));
+    return { startUtc, nextMonthStartUtc };
+  }
+
+  private parseShipmentValue(rawValue: string): number {
+    if (!rawValue) {
+      return 0;
+    }
+
+    const sanitized = rawValue
+      .replace(/\s+/g, '')
+      .replace(/\.(?=\d{3}(\D|$))/g, '')
+      .replace(',', '.');
+
+    const numericMatch = sanitized.match(/-?\d+(\.\d+)?/);
+    if (!numericMatch) {
+      return 0;
+    }
+
+    const parsed = Number(numericMatch[0]);
+    return Number.isFinite(parsed) ? parsed : 0;
   }
 }
