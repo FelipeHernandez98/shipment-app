@@ -46,4 +46,8 @@ export class CustomExceptions {
     static PdfNotFoundException(shipmentId: string): NotFoundException {
         return new NotFoundException(`PDF for shipment with id ${shipmentId} not found`);
     }
+
+    static FreightNotFoundException(freightId: string): NotFoundException {
+        return new NotFoundException(`Freight with id ${freightId} not found`);
+    }
 }

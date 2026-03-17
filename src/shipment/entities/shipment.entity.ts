@@ -3,6 +3,7 @@ import { v7 as uuidv7 } from "uuid";
 import { Client } from '../../client/entities/client.entity';
 import { User } from "src/user/entities/user.entity";
 import { ApiProperty } from '@nestjs/swagger';
+import { Freight } from 'src/freight/entities/freight.entity';
 
 @Entity('shipment', { schema: 'shipmentschema' })   
 export class Shipment {
@@ -124,6 +125,26 @@ export class Shipment {
     })
     @Column('character varying', { name: 'pdf_path', nullable: true })
     pdfPath: string;
+
+    @ApiProperty({
+        description: 'ID del flete asociado',
+        example: '550e8400-e29b-41d4-a716-446655440099',
+        required: false
+    })
+    @Column('uuid', { name: 'freight_id', nullable: true })
+    freightId: string;
+
+    @ApiProperty({
+        description: 'Información del flete asociado',
+        type: () => Freight,
+        required: false
+    })
+    @ManyToOne(() => Freight, (freight) => freight.shipments, {
+        nullable: true,
+        onDelete: 'SET NULL',
+    })
+    @JoinColumn({ name: 'freight_id' })
+    freight: Freight;
 
     @BeforeInsert()
     generateId() {

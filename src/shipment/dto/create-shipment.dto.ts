@@ -1,7 +1,16 @@
-import { IsString, IsUUID, IsDateString, IsNumber, MaxLength, IsNotEmpty } from 'class-validator';
+import { IsString, IsUUID, MaxLength, IsNotEmpty, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateShipmentDto {
+
+  @ApiProperty({
+    description: 'ID del flete asociado (opcional)',
+    example: '550e8400-e29b-41d4-a716-446655440099',
+    required: false,
+  })
+  @IsOptional()
+  @IsUUID()
+  freightId?: string;
 
   @ApiProperty({
     description: 'ID del remitente (cliente)',

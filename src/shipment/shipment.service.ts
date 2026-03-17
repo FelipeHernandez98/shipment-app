@@ -10,11 +10,11 @@ import { CustomExceptions } from 'src/commons/exceptions/custom-exceptions';
 import { UserService } from 'src/user/user.service';
 import { ClientService } from 'src/client/client.service';
 import { User } from 'src/user/entities/user.entity';
-import { Roles } from 'src/commons/enums/roles.enum';
 import { PdfService } from '../pdf/pdf.service';
 import { LocationsEnum } from 'src/commons/enums/locations.enum';
 import { StorageService } from 'src/storage/storage.service';
 import { ShipmentFinancialMetricsDto, ShipmentMetricsByStatusDto } from './dto/shipment-financial-metrics.dto';
+import { Freight } from 'src/freight/entities/freight.entity';
 
 @Injectable()
 export class ShipmentService {
@@ -43,6 +43,8 @@ export class ShipmentService {
   constructor(
     @InjectRepository(Shipment)
     private readonly shipmentRepository: Repository<Shipment>,
+    @InjectRepository(Freight)
+    private readonly freightRepository: Repository<Freight>,
     private readonly userService: UserService,
     private readonly clientService: ClientService,
     private readonly trackingSequenceService: TrackingSequenceService,
@@ -56,6 +58,16 @@ export class ShipmentService {
     await this.clientService.findById(createShipmentDto.remitterId);
 
     await this.clientService.findById(createShipmentDto.recipientId);
+
+    if (createShipmentDto.freightId) {
+      const freight = await this.freightRepository.findOne({
+        where: { id: createShipmentDto.freightId },
+      });
+
+      if (!freight) {
+        throw CustomExceptions.FreightNotFoundException(createShipmentDto.freightId);
+      }
+    }
 
     const trackingCode = await this.trackingSequenceService.generateTrackingCode();
 
@@ -84,7 +96,7 @@ export class ShipmentService {
 
   async findAll(): Promise<Shipment[]> {
     const shipments = await this.shipmentRepository.find({
-      relations: ['remitter', 'recipient', 'user'],
+      relations: ['remitter', 'recipient', 'user', 'freight'],
       order: {
         sendDate: 'DESC',
       },
@@ -98,7 +110,7 @@ export class ShipmentService {
   async findByTrackingCode(trackingCode: string): Promise<Shipment> {
     const shipment = await this.shipmentRepository.findOne({
       where: { trackingCode },
-      relations: ['remitter', 'recipient', 'user']
+      relations: ['remitter', 'recipient', 'user', 'freight']
     });
     if (!shipment) {
       throw CustomExceptions.ShipmentNotFoundByTrackingCodeException(trackingCode);
@@ -109,7 +121,7 @@ export class ShipmentService {
   async findOne(id: string): Promise<Shipment> {
     const shipment = await this.shipmentRepository.findOne({
       where: { id },
-      relations: ['remitter', 'recipient', 'user'],
+      relations: ['remitter', 'recipient', 'user', 'freight'],
     });
 
     if (!shipment) {
@@ -130,7 +142,7 @@ export class ShipmentService {
     });
     return this.shipmentRepository.findOne({
       where: { id },
-      relations: ['remitter', 'recipient', 'user']
+      relations: ['remitter', 'recipient', 'user', 'freight']
     });
   }
 
@@ -144,7 +156,7 @@ export class ShipmentService {
   async findByUserId(userId: string, currentUser: User): Promise<Shipment[]> {
     const shipments = await this.shipmentRepository.find({
       where: { userId },
-      relations: ['remitter', 'recipient', 'user']
+      relations: ['remitter', 'recipient', 'user', 'freight']
     });
     
     if (shipments.length === 0) {
@@ -156,7 +168,7 @@ export class ShipmentService {
   async findByRemitterId(remitterId: string): Promise<Shipment[]> {
     const shipments = await this.shipmentRepository.find({
       where: { remitterId },
-      relations: ['remitter', 'recipient', 'user']
+      relations: ['remitter', 'recipient', 'user', 'freight']
     });
     
     if (shipments.length === 0) {
@@ -168,7 +180,7 @@ export class ShipmentService {
   async findByRecipientId(recipientId: string): Promise<Shipment[]> {
     const shipments = await this.shipmentRepository.find({
       where: { recipientId },
-      relations: ['remitter', 'recipient', 'user']
+      relations: ['remitter', 'recipient', 'user', 'freight']
     });
     
     if (shipments.length === 0) {
@@ -180,7 +192,7 @@ export class ShipmentService {
   async findByStatus(statusId: number): Promise<Shipment[]> {
     const shipments = await this.shipmentRepository.find({
       where: { statusId },
-      relations: ['remitter', 'recipient', 'user']
+      relations: ['remitter', 'recipient', 'user', 'freight']
     });
     
     if (shipments.length === 0) {
@@ -192,7 +204,7 @@ export class ShipmentService {
   async findByLocation(locationId: number): Promise<Shipment[]> {
     const shipments = await this.shipmentRepository.find({
       where: { locationId },
-      relations: ['remitter', 'recipient', 'user']
+      relations: ['remitter', 'recipient', 'user', 'freight']
     });
     
     if (shipments.length === 0) {

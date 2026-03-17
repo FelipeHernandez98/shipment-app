@@ -35,6 +35,7 @@ async function bootstrap() {
     .addTag('users', 'Operaciones relacionadas con usuarios')
     .addTag('clients', 'Operaciones relacionadas con clientes')
     .addTag('shipments', 'Operaciones relacionadas con envíos')
+    .addTag('freights', 'Operaciones relacionadas con fletes')
     .addBearerAuth(
       {
         type: 'http',

@@ -6,6 +6,7 @@ import * as bwipjs from 'bwip-js';
 import { Shipment } from '../shipment/entities/shipment.entity';
 import { StorageService } from '../storage/storage.service';
 import { ConfigService } from '@nestjs/config';
+import { Freight } from '../freight/entities/freight.entity';
 
 @Injectable()
 export class PdfService {
@@ -49,6 +50,44 @@ export class PdfService {
     }
   }
 
+  async generateFreightConsolidatedGuide(
+    freight: Freight,
+    shipments: Shipment[],
+  ): Promise<string> {
+    const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+      ...(executablePath ? { executablePath } : {}),
+    });
+
+    try {
+      const page = await browser.newPage();
+      const htmlContent = await this.generateFreightConsolidatedHtml(freight, shipments);
+
+      await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+
+      const pdfBuffer = await page.pdf({
+        format: 'A4',
+        printBackground: true,
+      });
+
+      const objectKey = this.buildFreightObjectKey(freight.id);
+
+      await this.storageService.uploadPdf(Buffer.from(pdfBuffer), objectKey, {
+        metadata: {
+          freightId: freight.id,
+          guideCode: freight.guideCode,
+          pages: String(shipments.length + 1),
+        },
+      });
+
+      return objectKey;
+    } finally {
+      await browser.close();
+    }
+  }
+
   private buildObjectKey(shipmentId: string, sendDate?: Date | string): string {
     const baseDate = sendDate ? new Date(sendDate) : new Date();
     const year = baseDate.getFullYear();
@@ -57,6 +96,360 @@ export class PdfService {
     const normalizedPrefix = pdfPrefix.replace(/^\/+|\/+$/g, '');
 
     return `${normalizedPrefix}/${year}/${month}/${shipmentId}.pdf`;
+  }
+
+  private buildFreightObjectKey(freightId: string): string {
+    const baseDate = new Date();
+    const year = baseDate.getFullYear();
+    const month = String(baseDate.getMonth() + 1).padStart(2, '0');
+    const pdfPrefix = this.configService.get<string>('r2.pdfPrefix') ?? 'shipments';
+    const normalizedPrefix = pdfPrefix.replace(/^\/+|\/+$/g, '');
+    const timestamp = Date.now();
+
+    return `${normalizedPrefix}/freights/${year}/${month}/${freightId}/consolidated-${timestamp}.pdf`;
+  }
+
+  private async generateFreightConsolidatedHtml(
+    freight: Freight,
+    shipments: Shipment[],
+  ): Promise<string> {
+    const logoDataUrl = this.getBrandLogoDataUrl();
+    const barcodeDataUrl = await this.generateTrackingBarcode(freight.guideCode);
+    const generatedDate = new Date().toLocaleDateString('es-CO');
+
+    const shipmentPages = await Promise.all(
+      shipments.map(async (shipment, index) => {
+        const shipmentBarcode = await this.generateTrackingBarcode(shipment.trackingCode);
+        return this.buildShipmentPageHtml(shipment, shipmentBarcode, index + 1, shipments.length);
+      }),
+    );
+
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    @page {
+      size: A4;
+      margin: 10mm;
+    }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      margin: 0;
+      color: #000;
+      background: #fff;
+    }
+
+    .pdf-page {
+      width: 100%;
+      min-height: 100%;
+      border: 1px solid #000;
+      padding: 16px;
+      page-break-after: always;
+    }
+
+    .pdf-page:last-child {
+      page-break-after: auto;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border: 1px solid #000;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
+    }
+
+    .brand-logo {
+      max-width: 220px;
+      max-height: 52px;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+    }
+
+    .title-badge {
+      border: 1px solid #000;
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .summary-card {
+      border: 1px solid #000;
+      border-radius: 8px;
+      padding: 10px;
+    }
+
+    .summary-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .summary-value {
+      font-size: 18px;
+      font-weight: 700;
+      word-break: break-word;
+    }
+
+    .barcode-wrap {
+      margin-top: 14px;
+      border: 1px solid #000;
+      border-radius: 8px;
+      text-align: center;
+      padding: 12px;
+    }
+
+    .barcode {
+      width: 280px;
+      height: auto;
+    }
+
+    .barcode-caption {
+      margin-top: 6px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .track-card {
+      border: 2px solid #000;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .track-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .track-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .track-number {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      word-break: break-all;
+    }
+
+    .route {
+      border: 1px solid #000;
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .section {
+      border: 1px solid #000;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .section-title {
+      background: #000;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 8px 10px;
+    }
+
+    .section-content {
+      padding: 10px;
+      font-size: 12px;
+      line-height: 1.35;
+      display: grid;
+      gap: 6px;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      gap: 10px;
+    }
+
+    .meta-item {
+      border: 1px solid #000;
+      border-radius: 8px;
+      padding: 10px;
+    }
+
+    .meta-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .meta-value {
+      font-size: 13px;
+      font-weight: 700;
+      word-break: break-word;
+    }
+
+    .page-index {
+      text-align: right;
+      font-size: 11px;
+      margin-top: 8px;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <section class="pdf-page">
+    <div class="header">
+      <img class="brand-logo" src="${logoDataUrl}" alt="Marca Zenda" />
+      <div class="title-badge">Guia de flete</div>
+    </div>
+
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="summary-label">Ciudad origen</div>
+        <div class="summary-value">${freight.originCity || 'N/A'}</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">Ciudad destino</div>
+        <div class="summary-value">${freight.destinationCity || 'N/A'}</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">Cantidad de paquetes</div>
+        <div class="summary-value">${shipments.length}</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">Fecha de generacion</div>
+        <div class="summary-value">${generatedDate}</div>
+      </div>
+    </div>
+
+    <div class="barcode-wrap">
+      <img class="barcode" src="${barcodeDataUrl}" alt="Codigo de barras ${freight.guideCode}" />
+      <div class="barcode-caption">GUIA FLETE: ${freight.guideCode}</div>
+    </div>
+
+    <div class="page-index">Pagina 1 de ${shipments.length + 1}</div>
+  </section>
+
+  ${shipmentPages.join('\n')}
+</body>
+</html>
+`;
+  }
+
+  private buildShipmentPageHtml(
+    shipment: Shipment,
+    barcodeDataUrl: string,
+    sequence: number,
+    totalShipments: number,
+  ): string {
+    const remitterName = shipment.remitter
+      ? `${shipment.remitter.name} ${shipment.remitter.lastname}`
+      : 'N/A';
+    const recipientName = shipment.recipient
+      ? `${shipment.recipient.name} ${shipment.recipient.lastname}`
+      : 'N/A';
+    const originCity = shipment.remitter?.city?.toUpperCase() || 'N/A';
+    const destinationCity = shipment.recipient?.city?.toUpperCase() || 'N/A';
+    const shipmentDate = shipment.sendDate
+      ? new Date(shipment.sendDate).toLocaleDateString('es-CO')
+      : 'N/A';
+    const formattedShipmentValue = this.formatShipmentValue(shipment.shipmentValue);
+
+    return `
+    <section class="pdf-page">
+      <div class="track-card">
+        <div class="track-label">Codigo de seguimiento</div>
+        <div class="track-row">
+          <div class="track-number">${shipment.trackingCode}</div>
+          <img class="barcode" src="${barcodeDataUrl}" alt="Codigo ${shipment.trackingCode}" />
+        </div>
+      </div>
+
+      <div class="route">
+        <div>
+          <div class="summary-label">Origen</div>
+          <div class="summary-value">${originCity}</div>
+        </div>
+        <div style="font-size: 22px; font-weight: 700;">-></div>
+        <div style="text-align: right;">
+          <div class="summary-label">Destino</div>
+          <div class="summary-value">${destinationCity}</div>
+        </div>
+      </div>
+
+      <div class="section-grid">
+        <div class="section">
+          <div class="section-title">Remitente</div>
+          <div class="section-content">
+            <div><strong>Nombre:</strong> ${remitterName}</div>
+            <div><strong>Direccion:</strong> ${shipment.remitter?.address || 'N/A'}, ${shipment.remitter?.city || 'N/A'}</div>
+            <div><strong>Telefono:</strong> ${shipment.remitter?.phoneNumber || 'N/A'}</div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Destinatario</div>
+          <div class="section-content">
+            <div><strong>Nombre:</strong> ${recipientName}</div>
+            <div><strong>Direccion:</strong> ${shipment.recipient?.address || 'N/A'}, ${shipment.recipient?.city || 'N/A'}</div>
+            <div><strong>Telefono:</strong> ${shipment.recipient?.phoneNumber || 'N/A'}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="meta-grid">
+        <div class="meta-item">
+          <div class="meta-title">Descripcion del paquete</div>
+          <div class="meta-value">${shipment.packageDescription || 'N/A'}</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-title">Fecha de envio</div>
+          <div class="meta-value">${shipmentDate}</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-title">Valor a cobrar</div>
+          <div class="meta-value">$ ${formattedShipmentValue}</div>
+        </div>
+      </div>
+
+      <div class="page-index">Pagina ${sequence + 1} de ${totalShipments + 1}</div>
+    </section>
+    `;
   }
 
   private async generateHtmlTemplate(shipment: Shipment): Promise<string> {

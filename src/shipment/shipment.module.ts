@@ -10,9 +10,10 @@ import { ClientModule } from 'src/client/client.module';
 import { PassportModule } from '@nestjs/passport';
 import { PdfModule } from '../pdf/pdf.module';
 import { StorageModule } from 'src/storage/storage.module';
+import { Freight } from 'src/freight/entities/freight.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Shipment, TrackingSequence]), UserModule, ClientModule, PassportModule, PdfModule, StorageModule],
+  imports: [TypeOrmModule.forFeature([Shipment, TrackingSequence, Freight]), UserModule, ClientModule, PassportModule, PdfModule, StorageModule],
   controllers: [ShipmentController],
   providers: [ShipmentService, TrackingSequenceService],
 })
