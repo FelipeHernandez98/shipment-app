@@ -118,9 +118,9 @@ export class PdfService {
     const generatedDate = new Date().toLocaleDateString('es-CO');
 
     const shipmentPages = await Promise.all(
-      shipments.map(async (shipment, index) => {
+      shipments.map(async (shipment) => {
         const shipmentBarcode = await this.generateTrackingBarcode(shipment.trackingCode);
-        return this.buildShipmentPageHtml(shipment, shipmentBarcode, index + 1, shipments.length);
+        return `<section class="shipment-page">${this.buildShipmentGuidePageHtml(shipment, shipmentBarcode, freight.guideCode, logoDataUrl)}</section>`;
       }),
     );
 
@@ -149,7 +149,7 @@ export class PdfService {
       width: 100%;
       min-height: 100%;
       border: 1px solid #000;
-      padding: 16px;
+      padding: 22px;
       page-break-after: always;
     }
 
@@ -157,17 +157,26 @@ export class PdfService {
       page-break-after: auto;
     }
 
-    .header {
+    .shipment-page {
+      page-break-after: always;
+    }
+
+    .shipment-page:last-child {
+      page-break-after: auto;
+    }
+
+    .freight-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      border: 1px solid #000;
-      border-radius: 8px;
-      padding: 12px 14px;
-      margin-bottom: 14px;
+      border: 2px solid #000;
+      border-radius: 12px;
+      padding: 16px 18px;
+      margin-bottom: 18px;
+      background: #fff;
     }
 
-    .brand-logo {
+    .freight-brand-logo {
       max-width: 220px;
       max-height: 52px;
       width: auto;
@@ -176,151 +185,113 @@ export class PdfService {
     }
 
     .title-badge {
-      border: 1px solid #000;
-      border-radius: 6px;
-      padding: 8px 10px;
-      font-size: 14px;
+      border: 2px solid #000;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 15px;
       font-weight: 700;
       text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .freight-main-title {
+      font-size: 24px;
+      font-weight: 700;
+      margin: 0 0 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+    }
+
+    .freight-subtitle {
+      font-size: 12px;
+      margin: 0;
+      color: #333;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+    }
+
+    .freight-highlight {
+      border: 2px solid #000;
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 14px;
+      background: #f8f8f8;
+      display: grid;
+      gap: 6px;
+    }
+
+    .freight-highlight-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .freight-highlight-value {
+      font-size: 22px;
+      font-weight: 700;
+      word-break: break-all;
+      line-height: 1.2;
     }
 
     .summary-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-top: 10px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 12px;
     }
 
     .summary-card {
       border: 1px solid #000;
-      border-radius: 8px;
-      padding: 10px;
+      border-radius: 10px;
+      padding: 12px;
+      background: #fff;
     }
 
     .summary-label {
       font-size: 11px;
       font-weight: 700;
       text-transform: uppercase;
-      margin-bottom: 4px;
+      margin-bottom: 6px;
+      letter-spacing: 0.4px;
     }
 
     .summary-value {
-      font-size: 18px;
+      font-size: 20px;
       font-weight: 700;
       word-break: break-word;
+      line-height: 1.2;
     }
 
-    .barcode-wrap {
-      margin-top: 14px;
-      border: 1px solid #000;
-      border-radius: 8px;
+    .freight-barcode-wrap {
+      margin-top: 18px;
+      border: 2px solid #000;
+      border-radius: 12px;
       text-align: center;
-      padding: 12px;
+      padding: 16px 12px;
+      background: #fff;
     }
 
-    .barcode {
-      width: 280px;
+    .freight-barcode {
+      width: 390px;
+      max-width: 100%;
       height: auto;
     }
 
-    .barcode-caption {
-      margin-top: 6px;
-      font-size: 12px;
-      font-weight: 700;
-    }
-
-    .track-card {
-      border: 2px solid #000;
-      border-radius: 8px;
-      padding: 12px;
-      margin-bottom: 12px;
-    }
-
-    .track-label {
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      margin-bottom: 6px;
-    }
-
-    .track-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .track-number {
-      font-size: 24px;
-      font-weight: 700;
-      letter-spacing: 1.2px;
-      word-break: break-all;
-    }
-
-    .route {
-      border: 1px solid #000;
-      border-radius: 8px;
-      padding: 10px;
-      margin-bottom: 10px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .section-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-bottom: 10px;
-    }
-
-    .section {
-      border: 1px solid #000;
-      border-radius: 8px;
-      overflow: hidden;
-    }
-
-    .section-title {
-      background: #000;
-      color: #fff;
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      padding: 8px 10px;
-    }
-
-    .section-content {
-      padding: 10px;
-      font-size: 12px;
-      line-height: 1.35;
-      display: grid;
-      gap: 6px;
-    }
-
-    .meta-grid {
-      display: grid;
-      grid-template-columns: 2fr 1fr 1fr;
-      gap: 10px;
-    }
-
-    .meta-item {
-      border: 1px solid #000;
-      border-radius: 8px;
-      padding: 10px;
-    }
-
-    .meta-title {
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      margin-bottom: 4px;
-    }
-
-    .meta-value {
+    .freight-barcode-caption {
+      margin-top: 10px;
       font-size: 13px;
       font-weight: 700;
-      word-break: break-word;
+      letter-spacing: 0.5px;
+    }
+
+    .freight-footer-note {
+      margin-top: 14px;
+      text-align: center;
+      font-size: 11px;
+      color: #333;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
     }
 
     .page-index {
@@ -329,13 +300,24 @@ export class PdfService {
       margin-top: 8px;
       color: #333;
     }
+
+    ${this.getShipmentGuideStyles()}
   </style>
 </head>
 <body>
   <section class="pdf-page">
-    <div class="header">
-      <img class="brand-logo" src="${logoDataUrl}" alt="Marca Zenda" />
-      <div class="title-badge">Guia de flete</div>
+    <div class="freight-header">
+      <div>
+        <h1 class="freight-main-title">Guia consolidada de flete</h1>
+        <p class="freight-subtitle">Resumen general del despacho consolidado</p>
+      </div>
+      <img class="freight-brand-logo" src="${logoDataUrl}" alt="Marca Zenda" />
+    </div>
+
+    <div class="freight-highlight">
+      <div class="freight-highlight-label">Tracking del flete</div>
+      <div class="freight-highlight-value">${freight.guideCode || 'N/A'}</div>
+      <div class="title-badge">Documento maestro de transporte</div>
     </div>
 
     <div class="summary-grid">
@@ -348,7 +330,7 @@ export class PdfService {
         <div class="summary-value">${freight.destinationCity || 'N/A'}</div>
       </div>
       <div class="summary-card">
-        <div class="summary-label">Cantidad de paquetes</div>
+        <div class="summary-label">Cantidad total de paquetes</div>
         <div class="summary-value">${shipments.length}</div>
       </div>
       <div class="summary-card">
@@ -357,10 +339,12 @@ export class PdfService {
       </div>
     </div>
 
-    <div class="barcode-wrap">
-      <img class="barcode" src="${barcodeDataUrl}" alt="Codigo de barras ${freight.guideCode}" />
-      <div class="barcode-caption">GUIA FLETE: ${freight.guideCode}</div>
+    <div class="freight-barcode-wrap">
+      <img class="freight-barcode" src="${barcodeDataUrl}" alt="Codigo de barras ${freight.guideCode}" />
+      <div class="freight-barcode-caption">GUIA FLETE: ${freight.guideCode}</div>
     </div>
+
+    <div class="freight-footer-note">Incluye ${shipments.length} guias individuales anexas</div>
 
     <div class="page-index">Pagina 1 de ${shipments.length + 1}</div>
   </section>
@@ -371,11 +355,11 @@ export class PdfService {
 `;
   }
 
-  private buildShipmentPageHtml(
+  private buildShipmentGuidePageHtml(
     shipment: Shipment,
     barcodeDataUrl: string,
-    sequence: number,
-    totalShipments: number,
+    freightTrackingCode?: string,
+    logoDataUrl?: string,
   ): string {
     const remitterName = shipment.remitter
       ? `${shipment.remitter.name} ${shipment.remitter.lastname}`
@@ -390,105 +374,93 @@ export class PdfService {
       : 'N/A';
     const formattedShipmentValue = this.formatShipmentValue(shipment.shipmentValue);
 
+    const brandLogoDataUrl = logoDataUrl ?? this.getBrandLogoDataUrl();
+
     return `
-    <section class="pdf-page">
-      <div class="track-card">
-        <div class="track-label">Codigo de seguimiento</div>
-        <div class="track-row">
-          <div class="track-number">${shipment.trackingCode}</div>
-          <img class="barcode" src="${barcodeDataUrl}" alt="Codigo ${shipment.trackingCode}" />
+  <div class="page">
+
+    <div class="header">
+      <img class="brand-logo" src="${brandLogoDataUrl}" alt="Marca Zenda" />
+      <div class="guide-title">Guía de envío</div>
+    </div>
+
+    <div class="content">
+
+      <div class="tracking-card">
+        <div class="tracking-label">CÓDIGO DE SEGUIMIENTO:</div>
+        ${freightTrackingCode ? `<div class="tracking-freight"><span class="label">Tracking flete:</span> ${freightTrackingCode}</div>` : ''}
+        <div class="tracking-content">
+          <div class="tracking-number-wrap">
+            <div class="tracking-number">${shipment.trackingCode}</div>
+          </div>
+          <div class="barcode-wrap">
+            <img class="barcode" src="${barcodeDataUrl}" alt="Código de barras ${shipment.trackingCode}" />
+            <div class="barcode-caption">GUIA No. ${shipment.trackingCode}</div>
+          </div>
         </div>
       </div>
 
-      <div class="route">
-        <div>
-          <div class="summary-label">Origen</div>
-          <div class="summary-value">${originCity}</div>
+      <div class="route-card">
+        <div class="route-city">
+          <div class="route-label">Ciudad origen</div>
+          <div class="route-value">${originCity}</div>
         </div>
-        <div style="font-size: 22px; font-weight: 700;">-></div>
-        <div style="text-align: right;">
-          <div class="summary-label">Destino</div>
-          <div class="summary-value">${destinationCity}</div>
+        <div class="route-arrow">→</div>
+        <div class="route-city" style="text-align: right;">
+          <div class="route-label">Ciudad destino</div>
+          <div class="route-value">${destinationCity}</div>
         </div>
       </div>
 
-      <div class="section-grid">
+      <div class="grid-2">
         <div class="section">
           <div class="section-title">Remitente</div>
-          <div class="section-content">
-            <div><strong>Nombre:</strong> ${remitterName}</div>
-            <div><strong>Direccion:</strong> ${shipment.remitter?.address || 'N/A'}, ${shipment.remitter?.city || 'N/A'}</div>
-            <div><strong>Telefono:</strong> ${shipment.remitter?.phoneNumber || 'N/A'}</div>
+          <div class="section-body">
+            <div class="info-row"><span class="label">Nombre:</span> ${remitterName}</div>
+            <div class="info-row"><span class="label">Dirección:</span> ${shipment.remitter?.address || 'N/A'}, ${shipment.remitter?.city || 'N/A'}</div>
+            <div class="info-row"><span class="label">Teléfono:</span> ${shipment.remitter?.phoneNumber || 'N/A'}</div>
           </div>
         </div>
 
         <div class="section">
           <div class="section-title">Destinatario</div>
-          <div class="section-content">
-            <div><strong>Nombre:</strong> ${recipientName}</div>
-            <div><strong>Direccion:</strong> ${shipment.recipient?.address || 'N/A'}, ${shipment.recipient?.city || 'N/A'}</div>
-            <div><strong>Telefono:</strong> ${shipment.recipient?.phoneNumber || 'N/A'}</div>
+          <div class="section-body">
+            <div class="info-row"><span class="label">Nombre:</span> ${recipientName}</div>
+            <div class="info-row"><span class="label">Dirección:</span> ${shipment.recipient?.address || 'N/A'}, ${shipment.recipient?.city || 'N/A'}</div>
+            <div class="info-row"><span class="label">Teléfono:</span> ${shipment.recipient?.phoneNumber || 'N/A'}</div>
           </div>
         </div>
       </div>
 
       <div class="meta-grid">
-        <div class="meta-item">
-          <div class="meta-title">Descripcion del paquete</div>
+        <div class="meta-card">
+          <div class="meta-title">Descripción del paquete</div>
           <div class="meta-value">${shipment.packageDescription || 'N/A'}</div>
         </div>
-        <div class="meta-item">
-          <div class="meta-title">Fecha de envio</div>
+
+        <div class="meta-card">
+          <div class="meta-title">Fecha de envío</div>
           <div class="meta-value">${shipmentDate}</div>
         </div>
-        <div class="meta-item">
+
+        <div class="meta-card">
           <div class="meta-title">Valor a cobrar</div>
           <div class="meta-value">$ ${formattedShipmentValue}</div>
         </div>
       </div>
 
-      <div class="page-index">Pagina ${sequence + 1} de ${totalShipments + 1}</div>
-    </section>
+    </div>
+
+    <div class="bottom-note">
+      Documento generado automáticamente por Zenda
+    </div>
+
+  </div>
     `;
   }
 
-  private async generateHtmlTemplate(shipment: Shipment): Promise<string> {
-    const barcodeDataUrl = await this.generateTrackingBarcode(shipment.trackingCode);
-    const logoDataUrl = this.getBrandLogoDataUrl();
-    const remitterName = shipment.remitter
-      ? `${shipment.remitter.name} ${shipment.remitter.lastname}`
-      : 'N/A';
-    const recipientName = shipment.recipient
-      ? `${shipment.recipient.name} ${shipment.recipient.lastname}`
-      : 'N/A';
-    const originCity = shipment.remitter?.city?.toUpperCase() || 'N/A';
-    const destinationCity = shipment.recipient?.city?.toUpperCase() || 'N/A';
-    const shipmentDate = shipment.sendDate
-      ? new Date(shipment.sendDate).toLocaleDateString('es-CO')
-      : 'N/A';
-    const formattedShipmentValue = this.formatShipmentValue(shipment.shipmentValue);
-
+  private getShipmentGuideStyles(): string {
     return `
-      <!DOCTYPE html>
-<html>
-<head>
-  <style>
-    * {
-      box-sizing: border-box;
-    }
-
-    @page {
-      size: A4;
-      margin: 10mm;
-    }
-
-    body {
-      font-family: Arial, Helvetica, sans-serif;
-      margin: 0;
-      background: #fff;
-      color: #000;
-    }
-
     .page {
       width: 100%;
       max-width: 780px;
@@ -541,6 +513,11 @@ export class PdfService {
       background: #fff;
       display: grid;
       gap: 8px;
+    }
+
+    .tracking-freight {
+      font-size: 13px;
+      line-height: 1.35;
     }
 
     .route-card {
@@ -720,88 +697,40 @@ export class PdfService {
         border: 1px solid #000;
       }
     }
+    `;
+  }
+
+  private async generateHtmlTemplate(shipment: Shipment): Promise<string> {
+    const barcodeDataUrl = await this.generateTrackingBarcode(shipment.trackingCode);
+    const logoDataUrl = this.getBrandLogoDataUrl();
+
+    return `
+      <!DOCTYPE html>
+<html>
+<head>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    @page {
+      size: A4;
+      margin: 10mm;
+    }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      margin: 0;
+      background: #fff;
+      color: #000;
+    }
+
+    ${this.getShipmentGuideStyles()}
   </style>
 </head>
 
 <body>
-  <div class="page">
-
-    <div class="header">
-      <img class="brand-logo" src="${logoDataUrl}" alt="Marca Zenda" />
-      <div class="guide-title">Guía de envío</div>
-    </div>
-
-    <div class="content">
-
-      <div class="tracking-card">
-        <div class="tracking-label">CÓDIGO DE SEGUIMIENTO:</div>
-        <div class="tracking-content">
-          <div class="tracking-number-wrap">
-            <div class="tracking-number">${shipment.trackingCode}</div>
-          </div>
-          <div class="barcode-wrap">
-            <img class="barcode" src="${barcodeDataUrl}" alt="Código de barras ${shipment.trackingCode}" />
-            <div class="barcode-caption">GUIA No. ${shipment.trackingCode}</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="route-card">
-        <div class="route-city">
-          <div class="route-label">Ciudad origen</div>
-          <div class="route-value">${originCity}</div>
-        </div>
-        <div class="route-arrow">→</div>
-        <div class="route-city" style="text-align: right;">
-          <div class="route-label">Ciudad destino</div>
-          <div class="route-value">${destinationCity}</div>
-        </div>
-      </div>
-
-      <div class="grid-2">
-        <div class="section">
-          <div class="section-title">Remitente</div>
-          <div class="section-body">
-            <div class="info-row"><span class="label">Nombre:</span> ${remitterName}</div>
-            <div class="info-row"><span class="label">Dirección:</span> ${shipment.remitter?.address || 'N/A'}, ${shipment.remitter?.city || 'N/A'}</div>
-            <div class="info-row"><span class="label">Teléfono:</span> ${shipment.remitter?.phoneNumber || 'N/A'}</div>
-          </div>
-        </div>
-
-        <div class="section">
-          <div class="section-title">Destinatario</div>
-          <div class="section-body">
-            <div class="info-row"><span class="label">Nombre:</span> ${recipientName}</div>
-            <div class="info-row"><span class="label">Dirección:</span> ${shipment.recipient?.address || 'N/A'}, ${shipment.recipient?.city || 'N/A'}</div>
-            <div class="info-row"><span class="label">Teléfono:</span> ${shipment.recipient?.phoneNumber || 'N/A'}</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="meta-grid">
-        <div class="meta-card">
-          <div class="meta-title">Descripción del paquete</div>
-          <div class="meta-value">${shipment.packageDescription || 'N/A'}</div>
-        </div>
-
-        <div class="meta-card">
-          <div class="meta-title">Fecha de envío</div>
-          <div class="meta-value">${shipmentDate}</div>
-        </div>
-
-        <div class="meta-card">
-          <div class="meta-title">Valor a cobrar</div>
-          <div class="meta-value">$ ${formattedShipmentValue}</div>
-        </div>
-      </div>
-
-    </div>
-
-    <div class="bottom-note">
-      Documento generado automáticamente por Zenda
-    </div>
-
-  </div>
+  ${this.buildShipmentGuidePageHtml(shipment, barcodeDataUrl, undefined, logoDataUrl)}
 </body>
 </html>
 

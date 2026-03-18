@@ -1,7 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
-import { v7 as uuidv7 } from 'uuid';
 import { Freight } from './entities/freight.entity';
 import { Shipment } from '../shipment/entities/shipment.entity';
 import { CreateFreightDto } from './dto/create-freight.dto';
@@ -13,6 +12,7 @@ import { PdfService } from '../pdf/pdf.service';
 import { StorageService } from '../storage/storage.service';
 import { LocationsEnum } from '../commons/enums/locations.enum';
 import { FreightConsolidatedPdfResponseDto } from './dto/freight-consolidated-pdf-response.dto';
+import { FreightTrackingSequenceService } from './freight-tracking-sequence.service';
 
 @Injectable()
 export class FreightService {
@@ -24,16 +24,18 @@ export class FreightService {
     private readonly userService: UserService,
     private readonly pdfService: PdfService,
     private readonly storageService: StorageService,
+    private readonly freightTrackingSequenceService: FreightTrackingSequenceService,
   ) {}
 
   async create(createFreightDto: CreateFreightDto): Promise<Freight> {
     await this.userService.findOne(createFreightDto.createdByUserId);
+    const guideCode = await this.freightTrackingSequenceService.generateGuideCode();
 
     const freight = this.freightRepository.create({
       ...createFreightDto,
       originCity: createFreightDto.originCity.toUpperCase().trim(),
       destinationCity: createFreightDto.destinationCity.toUpperCase().trim(),
-      guideCode: this.buildGuideCode(),
+      guideCode,
       createdAt: new Date(),
       totalPackages: 0,
     });
@@ -219,12 +221,4 @@ export class FreightService {
     }
   }
 
-  private buildGuideCode(): string {
-    const now = new Date();
-    const datePart = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(
-      now.getDate(),
-    ).padStart(2, '0')}`;
-
-    return `${uuidv7()}-${datePart}`;
-  }
 }

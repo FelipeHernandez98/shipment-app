@@ -16,6 +16,7 @@ import r2Config from './config/r2.config';
 import { StorageModule } from './storage/storage.module';
 import { Freight } from './freight/entities/freight.entity';
 import { FreightModule } from './freight/freight.module';
+import { FreightTrackingSequence } from './freight/entities/freight-tracking-sequence.entity';
 
 
 @Module({
@@ -33,7 +34,7 @@ import { FreightModule } from './freight/freight.module';
       username: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD,
       schema: process.env.DB_SCHEMA,
-      entities: [User, Client, Shipment, TrackingSequence, Freight],
+      entities: [User, Client, Shipment, TrackingSequence, Freight, FreightTrackingSequence],
       synchronize: true,
     }),
     UserModule,

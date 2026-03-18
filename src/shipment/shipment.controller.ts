@@ -127,6 +127,26 @@ export class ShipmentController {
     return this.shipmentService.findOne(id);
   }
 
+  @Post(':id/pdf')
+  @Auth(Roles.administrator, Roles.user)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Generar PDF del envío bajo demanda (si no existe)' })
+  @ApiParam({ name: 'id', description: 'ID del envío' })
+  @ApiResponse({
+    status: 200,
+    description: 'Resultado de generación/reutilización del PDF del envío',
+    schema: {
+      example: {
+        shipmentId: '550e8400-e29b-41d4-a716-446655440099',
+        pdfPath: 'shipments/2026/03/550e8400-e29b-41d4-a716-446655440099.pdf',
+        generated: true,
+      },
+    },
+  })
+  generatePdfOnDemand(@Param('id', ParseUUIDPipe) id: string) {
+    return this.shipmentService.generatePdfOnDemand(id);
+  }
+
   @Get(':id/pdf')
   @Auth(Roles.administrator, Roles.user)
   @ApiBearerAuth()

@@ -37,3 +37,11 @@ CREATE INDEX IF NOT EXISTS idx_shipment_freight_id
 
 CREATE INDEX IF NOT EXISTS idx_freight_created_at
   ON shipmentschema.freight(created_at DESC);
+
+-- Independent daily sequence for freight guide code generation (FT-DDMMYYYYNNNNNNN)
+CREATE TABLE IF NOT EXISTS shipmentschema.freight_tracking_sequence (
+  sequence_date date PRIMARY KEY,
+  current_sequence bigint NOT NULL DEFAULT 0,
+  created_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

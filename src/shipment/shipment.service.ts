@@ -78,20 +78,41 @@ export class ShipmentService {
       statusId: StatusEnum.ACTIVE,
       sendDate: new Date(),
     });
-    const savedShipment = await this.shipmentRepository.save(shipment);
+    return this.shipmentRepository.save(shipment);
+  }
 
-    // Load relations for PDF
-    const shipmentWithRelations = await this.shipmentRepository.findOne({
-      where: { id: savedShipment.id },
+  async generatePdfOnDemand(id: string): Promise<{
+    shipmentId: string;
+    pdfPath: string;
+    generated: boolean;
+  }> {
+    const shipment = await this.shipmentRepository.findOne({
+      where: { id },
       relations: ['remitter', 'recipient'],
     });
 
-    // Generate PDF
-    const pdfPath = await this.pdfService.generateShipmentGuide(shipmentWithRelations);
-    savedShipment.pdfPath = pdfPath;
-    await this.shipmentRepository.save(savedShipment);
+    if (!shipment) {
+      throw CustomExceptions.ShipmentNotFoundException(id);
+    }
 
-    return savedShipment;
+    if (shipment.pdfPath) {
+      return {
+        shipmentId: shipment.id,
+        pdfPath: shipment.pdfPath,
+        generated: false,
+      };
+    }
+
+    const pdfPath = await this.pdfService.generateShipmentGuide(shipment);
+    shipment.pdfPath = pdfPath;
+    shipment.updatedAt = new Date();
+    await this.shipmentRepository.save(shipment);
+
+    return {
+      shipmentId: shipment.id,
+      pdfPath,
+      generated: true,
+    };
   }
 
   async findAll(): Promise<Shipment[]> {
@@ -147,10 +168,40 @@ export class ShipmentService {
   }
 
   async remove(id: string): Promise<void> {
+    const shipment = await this.shipmentRepository.findOne({ where: { id } });
+    if (!shipment) {
+      throw CustomExceptions.ShipmentNotFoundException(id);
+    }
+
+    if (shipment.pdfPath) {
+      const pdfObjectKey = this.normalizePdfObjectKey(shipment.pdfPath);
+      if (pdfObjectKey) {
+        await this.storageService.deleteObject(pdfObjectKey);
+      }
+    }
+
     const result = await this.shipmentRepository.delete(id);
     if (result.affected === 0) {
       throw CustomExceptions.ShipmentNotFoundException(id);
     }
+  }
+
+  private normalizePdfObjectKey(pdfPath: string): string {
+    const normalizedPath = pdfPath.trim();
+    if (!normalizedPath) {
+      return '';
+    }
+
+    if (/^https?:\/\//i.test(normalizedPath)) {
+      try {
+        const { pathname } = new URL(normalizedPath);
+        return decodeURIComponent(pathname).replace(/^\/+/, '');
+      } catch {
+        return '';
+      }
+    }
+
+    return normalizedPath.replace(/^\/+/, '');
   }
 
   async findByUserId(userId: string, currentUser: User): Promise<Shipment[]> {

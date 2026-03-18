@@ -20,6 +20,7 @@ describe('ShipmentController', () => {
             findByRecipientId: jest.fn(),
             findByStatus: jest.fn(),
             findOne: jest.fn(),
+            generatePdfOnDemand: jest.fn(),
             getPdfPath: jest.fn(),
             getPdfBufferFromStorage: jest.fn(),
             update: jest.fn(),

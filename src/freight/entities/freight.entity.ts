@@ -13,8 +13,8 @@ export class Freight {
   id: string;
 
   @ApiProperty({
-    description: 'Codigo de guia del flete (UUID + fecha)',
-    example: '550e8400-e29b-41d4-a716-446655440099-20260316',
+    description: 'Codigo de guia del flete (FT- + DDMMYYYY + consecutivo de 7 digitos)',
+    example: 'FT-170320260000001',
   })
   @Column('character varying', { name: 'guide_code', length: 120, unique: true })
   guideCode: string;

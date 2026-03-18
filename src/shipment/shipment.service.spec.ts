@@ -25,6 +25,11 @@ describe('ShipmentService', () => {
     findOne: jest.fn(),
   };
 
+  const storageServiceMock = {
+    getObjectBuffer: jest.fn(),
+    deleteObject: jest.fn(),
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
 
@@ -57,7 +62,7 @@ describe('ShipmentService', () => {
         },
         {
           provide: StorageService,
-          useValue: { getObjectBuffer: jest.fn() },
+          useValue: storageServiceMock,
         },
       ],
     }).compile();
@@ -82,5 +87,44 @@ describe('ShipmentService', () => {
         shipmentValue: '$1000 COP',
       }),
     ).rejects.toThrow('Freight with id 550e8400-e29b-41d4-a716-446655440099 not found');
+  });
+
+  it('should delete pdf from storage before removing shipment when pdfPath exists', async () => {
+    shipmentRepositoryMock.findOne.mockResolvedValue({
+      id: 'shipment-1',
+      pdfPath: 'shipments/2026/03/shipment-1.pdf',
+    });
+    shipmentRepositoryMock.delete.mockResolvedValue({ affected: 1 });
+
+    await service.remove('shipment-1');
+
+    expect(storageServiceMock.deleteObject).toHaveBeenCalledWith('shipments/2026/03/shipment-1.pdf');
+    expect(shipmentRepositoryMock.delete).toHaveBeenCalledWith('shipment-1');
+  });
+
+  it('should delete pdf from storage when pdfPath is a full URL', async () => {
+    shipmentRepositoryMock.findOne.mockResolvedValue({
+      id: 'shipment-2',
+      pdfPath: 'https://cdn.example.com/shipments/2026/03/shipment-2.pdf',
+    });
+    shipmentRepositoryMock.delete.mockResolvedValue({ affected: 1 });
+
+    await service.remove('shipment-2');
+
+    expect(storageServiceMock.deleteObject).toHaveBeenCalledWith('shipments/2026/03/shipment-2.pdf');
+    expect(shipmentRepositoryMock.delete).toHaveBeenCalledWith('shipment-2');
+  });
+
+  it('should remove shipment without deleting object when pdfPath is empty', async () => {
+    shipmentRepositoryMock.findOne.mockResolvedValue({
+      id: 'shipment-3',
+      pdfPath: '   ',
+    });
+    shipmentRepositoryMock.delete.mockResolvedValue({ affected: 1 });
+
+    await service.remove('shipment-3');
+
+    expect(storageServiceMock.deleteObject).not.toHaveBeenCalled();
+    expect(shipmentRepositoryMock.delete).toHaveBeenCalledWith('shipment-3');
   });
 });
