@@ -7,6 +7,8 @@ import { UserService } from '../user/user.service';
 import { PdfService } from '../pdf/pdf.service';
 import { StorageService } from '../storage/storage.service';
 import { FreightTrackingSequenceService } from './freight-tracking-sequence.service';
+import { LocationsEnum } from '../commons/enums/locations.enum';
+import { StatusEnum } from '../commons/enums/status.enum';
 
 describe('FreightService', () => {
   let service: FreightService;
@@ -84,6 +86,37 @@ describe('FreightService', () => {
       locationId: 2,
       updatedShipments: 3,
     });
+    expect(shipmentRepositoryMock.update).toHaveBeenCalledWith(
+      { freightId: 'f-1' },
+      expect.objectContaining({ locationId: 2 }),
+    );
+  });
+
+  it('should set delivered status when updating location to completed', async () => {
+    freightRepositoryMock.findOne.mockResolvedValue({ id: 'f-2' });
+    shipmentRepositoryMock.update.mockResolvedValue({ affected: 2 });
+
+    await service.updateLocation('f-2', { locationId: LocationsEnum.COMPLETED });
+
+    expect(shipmentRepositoryMock.update).toHaveBeenCalledWith(
+      { freightId: 'f-2' },
+      expect.objectContaining({
+        locationId: LocationsEnum.COMPLETED,
+        statusId: StatusEnum.DELIVERED,
+      }),
+    );
+  });
+
+  it('should find freight by guide code', async () => {
+    freightRepositoryMock.findOne.mockResolvedValue({ id: 'f-3', guideCode: 'FT-170320260000001' });
+
+    const result = await service.findByGuideCode('ft-170320260000001');
+
+    expect(freightRepositoryMock.findOne).toHaveBeenCalledWith({
+      where: { guideCode: 'FT-170320260000001' },
+      relations: ['shipments'],
+    });
+    expect(result).toEqual({ id: 'f-3', guideCode: 'FT-170320260000001' });
   });
 
   it('should create freight with FT guide code format', async () => {

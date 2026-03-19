@@ -51,6 +51,17 @@ export class FreightController {
     return this.freightService.findAll();
   }
 
+  @Get('guide/:guideCode')
+  @Auth(Roles.administrator, Roles.user)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Obtener detalle de un flete por codigo de guia' })
+  @ApiParam({ name: 'guideCode', description: 'Codigo de guia del flete (guideCode)' })
+  @ApiResponse({ status: 200, description: 'Flete encontrado', type: Freight })
+  @ApiResponse({ status: 404, description: 'Flete no encontrado' })
+  findByGuideCode(@Param('guideCode') guideCode: string): Promise<Freight> {
+    return this.freightService.findByGuideCode(guideCode);
+  }
+
   @Get(':id')
   @Auth(Roles.administrator, Roles.user)
   @ApiBearerAuth()

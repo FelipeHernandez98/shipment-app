@@ -50,4 +50,8 @@ export class CustomExceptions {
     static FreightNotFoundException(freightId: string): NotFoundException {
         return new NotFoundException(`Freight with id ${freightId} not found`);
     }
+
+    static FreightNotFoundByGuideCodeException(guideCode: string): NotFoundException {
+        return new NotFoundException(`Freight with guide code ${guideCode} not found`);
+    }
 }

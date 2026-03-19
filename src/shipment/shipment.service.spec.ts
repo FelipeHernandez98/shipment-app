@@ -8,6 +8,8 @@ import { ClientService } from '../client/client.service';
 import { TrackingSequenceService } from './tracking-sequence.service';
 import { PdfService } from '../pdf/pdf.service';
 import { StorageService } from '../storage/storage.service';
+import { LocationsEnum } from '../commons/enums/locations.enum';
+import { StatusEnum } from '../commons/enums/status.enum';
 
 describe('ShipmentService', () => {
   let service: ShipmentService;
@@ -187,6 +189,27 @@ describe('ShipmentService', () => {
     expect(freightRepositoryMock.update).toHaveBeenCalledWith(
       'freight-1',
       expect.objectContaining({ totalPackages: 0, consolidatedPdfPath: null }),
+    );
+  });
+
+  it('should set status delivered when updating location to completed', async () => {
+    shipmentRepositoryMock.findOne
+      .mockResolvedValueOnce({ id: 'shipment-6', freightId: null })
+      .mockResolvedValueOnce({ id: 'shipment-6', locationId: LocationsEnum.COMPLETED });
+
+    shipmentRepositoryMock.update.mockResolvedValue({ affected: 1 });
+
+    await service.update('shipment-6', {
+      locationId: LocationsEnum.COMPLETED,
+      statusId: StatusEnum.PENDING,
+    });
+
+    expect(shipmentRepositoryMock.update).toHaveBeenCalledWith(
+      'shipment-6',
+      expect.objectContaining({
+        locationId: LocationsEnum.COMPLETED,
+        statusId: StatusEnum.DELIVERED,
+      }),
     );
   });
 });

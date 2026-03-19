@@ -11,6 +11,7 @@ import { UserService } from '../user/user.service';
 import { PdfService } from '../pdf/pdf.service';
 import { StorageService } from '../storage/storage.service';
 import { LocationsEnum } from '../commons/enums/locations.enum';
+import { StatusEnum } from '../commons/enums/status.enum';
 import { FreightConsolidatedPdfResponseDto } from './dto/freight-consolidated-pdf-response.dto';
 import { FreightTrackingSequenceService } from './freight-tracking-sequence.service';
 
@@ -68,6 +69,20 @@ export class FreightService {
     return freight;
   }
 
+  async findByGuideCode(guideCode: string): Promise<Freight> {
+    const normalizedGuideCode = guideCode.trim().toUpperCase();
+    const freight = await this.freightRepository.findOne({
+      where: { guideCode: normalizedGuideCode },
+      relations: ['shipments'],
+    });
+
+    if (!freight) {
+      throw CustomExceptions.FreightNotFoundByGuideCodeException(normalizedGuideCode);
+    }
+
+    return freight;
+  }
+
   async addShipments(
     id: string,
     addShipmentsDto: AddShipmentsToFreightDto,
@@ -117,12 +132,18 @@ export class FreightService {
     await this.ensureFreightExists(id);
     this.validateLocation(updateLocationDto.locationId);
 
+    const shipmentUpdatePayload: Partial<Shipment> = {
+      locationId: updateLocationDto.locationId,
+      updatedAt: new Date(),
+    };
+
+    if (updateLocationDto.locationId === LocationsEnum.COMPLETED) {
+      shipmentUpdatePayload.statusId = StatusEnum.DELIVERED;
+    }
+
     const result = await this.shipmentRepository.update(
       { freightId: id },
-      {
-        locationId: updateLocationDto.locationId,
-        updatedAt: new Date(),
-      },
+      shipmentUpdatePayload,
     );
 
     return {

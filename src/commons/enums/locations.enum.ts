@@ -4,4 +4,5 @@ export enum LocationsEnum {
     BODEGA_BUCARAMANGA = 2,
     VIAJANDO_BOGOTA = 3,
     BODEGA_BOGOTA = 4,
+    COMPLETED = 5
 }

@@ -184,11 +184,17 @@ export class ShipmentService {
       }
     }
 
-    const previousFreightId = shipment.freightId ?? null;
-    await this.shipmentRepository.update(id, {
+    const shipmentUpdatePayload: Partial<Shipment> = {
       ...updateShipmentDto,
       updatedAt: new Date(),
-    });
+    };
+
+    if (updateShipmentDto.locationId === LocationsEnum.COMPLETED) {
+      shipmentUpdatePayload.statusId = StatusEnum.DELIVERED;
+    }
+
+    const previousFreightId = shipment.freightId ?? null;
+    await this.shipmentRepository.update(id, shipmentUpdatePayload);
 
     if (updateShipmentDto.freightId !== undefined) {
       const nextFreightId = updateShipmentDto.freightId ?? null;
