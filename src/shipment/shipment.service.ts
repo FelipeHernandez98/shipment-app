@@ -13,7 +13,10 @@ import { User } from 'src/user/entities/user.entity';
 import { PdfService } from '../pdf/pdf.service';
 import { LocationsEnum } from 'src/commons/enums/locations.enum';
 import { StorageService } from 'src/storage/storage.service';
-import { ShipmentFinancialMetricsDto, ShipmentMetricsByStatusDto } from './dto/shipment-financial-metrics.dto';
+import {
+  ShipmentFinancialMetricsDto,
+  ShipmentMetricsByStatusDto,
+} from './dto/shipment-financial-metrics.dto';
 import { Freight } from 'src/freight/entities/freight.entity';
 
 @Injectable()
@@ -65,11 +68,14 @@ export class ShipmentService {
       });
 
       if (!freight) {
-        throw CustomExceptions.FreightNotFoundException(createShipmentDto.freightId);
+        throw CustomExceptions.FreightNotFoundException(
+          createShipmentDto.freightId,
+        );
       }
     }
 
-    const trackingCode = await this.trackingSequenceService.generateTrackingCode();
+    const trackingCode =
+      await this.trackingSequenceService.generateTrackingCode();
 
     const shipment = this.shipmentRepository.create({
       ...createShipmentDto,
@@ -131,10 +137,12 @@ export class ShipmentService {
   async findByTrackingCode(trackingCode: string): Promise<Shipment> {
     const shipment = await this.shipmentRepository.findOne({
       where: { trackingCode },
-      relations: ['remitter', 'recipient', 'user', 'freight']
+      relations: ['remitter', 'recipient', 'user', 'freight'],
     });
     if (!shipment) {
-      throw CustomExceptions.ShipmentNotFoundByTrackingCodeException(trackingCode);
+      throw CustomExceptions.ShipmentNotFoundByTrackingCodeException(
+        trackingCode,
+      );
     }
     return shipment;
   }
@@ -152,18 +160,53 @@ export class ShipmentService {
     return shipment;
   }
 
-  async update(id: string, updateShipmentDto: UpdateShipmentDto): Promise<Shipment> {
+  async update(
+    id: string,
+    updateShipmentDto: UpdateShipmentDto,
+  ): Promise<Shipment> {
     const shipment = await this.shipmentRepository.findOne({ where: { id } });
     if (!shipment) {
       throw CustomExceptions.ShipmentNotFoundException(id);
     }
+
+    if (
+      updateShipmentDto.freightId !== undefined &&
+      updateShipmentDto.freightId !== null
+    ) {
+      const freight = await this.freightRepository.findOne({
+        where: { id: updateShipmentDto.freightId },
+      });
+
+      if (!freight) {
+        throw CustomExceptions.FreightNotFoundException(
+          updateShipmentDto.freightId,
+        );
+      }
+    }
+
+    const previousFreightId = shipment.freightId ?? null;
     await this.shipmentRepository.update(id, {
       ...updateShipmentDto,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     });
+
+    if (updateShipmentDto.freightId !== undefined) {
+      const nextFreightId = updateShipmentDto.freightId ?? null;
+
+      if (previousFreightId !== nextFreightId) {
+        if (previousFreightId) {
+          await this.refreshFreightMetadata(previousFreightId);
+        }
+
+        if (nextFreightId) {
+          await this.refreshFreightMetadata(nextFreightId);
+        }
+      }
+    }
+
     return this.shipmentRepository.findOne({
       where: { id },
-      relations: ['remitter', 'recipient', 'user', 'freight']
+      relations: ['remitter', 'recipient', 'user', 'freight'],
     });
   }
 
@@ -204,12 +247,43 @@ export class ShipmentService {
     return normalizedPath.replace(/^\/+/, '');
   }
 
+  private async refreshFreightMetadata(freightId: string): Promise<void> {
+    const freight = await this.freightRepository.findOne({
+      where: { id: freightId },
+    });
+    if (!freight) {
+      return;
+    }
+
+    if (freight.consolidatedPdfPath) {
+      const pdfObjectKey = this.normalizePdfObjectKey(
+        freight.consolidatedPdfPath,
+      );
+      if (pdfObjectKey) {
+        try {
+          await this.storageService.deleteObject(pdfObjectKey);
+        } catch {
+          // If object deletion fails we still clear the reference to force regeneration.
+        }
+      }
+    }
+
+    const totalPackages = await this.shipmentRepository.count({
+      where: { freightId },
+    });
+    await this.freightRepository.update(freightId, {
+      totalPackages,
+      consolidatedPdfPath: null,
+      updatedAt: new Date(),
+    });
+  }
+
   async findByUserId(userId: string, currentUser: User): Promise<Shipment[]> {
     const shipments = await this.shipmentRepository.find({
       where: { userId },
-      relations: ['remitter', 'recipient', 'user', 'freight']
+      relations: ['remitter', 'recipient', 'user', 'freight'],
     });
-    
+
     if (shipments.length === 0) {
       throw CustomExceptions.ThereAreNoRecordsException();
     }
@@ -219,9 +293,9 @@ export class ShipmentService {
   async findByRemitterId(remitterId: string): Promise<Shipment[]> {
     const shipments = await this.shipmentRepository.find({
       where: { remitterId },
-      relations: ['remitter', 'recipient', 'user', 'freight']
+      relations: ['remitter', 'recipient', 'user', 'freight'],
     });
-    
+
     if (shipments.length === 0) {
       throw CustomExceptions.ThereAreNoRecordsException();
     }
@@ -231,9 +305,9 @@ export class ShipmentService {
   async findByRecipientId(recipientId: string): Promise<Shipment[]> {
     const shipments = await this.shipmentRepository.find({
       where: { recipientId },
-      relations: ['remitter', 'recipient', 'user', 'freight']
+      relations: ['remitter', 'recipient', 'user', 'freight'],
     });
-    
+
     if (shipments.length === 0) {
       throw CustomExceptions.ThereAreNoRecordsException();
     }
@@ -243,9 +317,9 @@ export class ShipmentService {
   async findByStatus(statusId: number): Promise<Shipment[]> {
     const shipments = await this.shipmentRepository.find({
       where: { statusId },
-      relations: ['remitter', 'recipient', 'user', 'freight']
+      relations: ['remitter', 'recipient', 'user', 'freight'],
     });
-    
+
     if (shipments.length === 0) {
       throw CustomExceptions.ThereAreNoRecordsException();
     }
@@ -255,9 +329,9 @@ export class ShipmentService {
   async findByLocation(locationId: number): Promise<Shipment[]> {
     const shipments = await this.shipmentRepository.find({
       where: { locationId },
-      relations: ['remitter', 'recipient', 'user', 'freight']
+      relations: ['remitter', 'recipient', 'user', 'freight'],
     });
-    
+
     if (shipments.length === 0) {
       throw CustomExceptions.ThereAreNoRecordsException();
     }
@@ -276,15 +350,23 @@ export class ShipmentService {
     return this.storageService.getObjectBuffer(key);
   }
 
-  async getFinancialMetrics(year: number, month: number): Promise<ShipmentFinancialMetricsDto> {
-    const { startUtc, nextMonthStartUtc } = this.getMonthlyRangeInBogota(year, month);
+  async getFinancialMetrics(
+    year: number,
+    month: number,
+  ): Promise<ShipmentFinancialMetricsDto> {
+    const { startUtc, nextMonthStartUtc } = this.getMonthlyRangeInBogota(
+      year,
+      month,
+    );
 
     const shipments = await this.shipmentRepository
       .createQueryBuilder('shipment')
       .select(['shipment.statusId', 'shipment.shipmentValue'])
       .where('shipment.sendDate >= :startUtc', { startUtc })
       .andWhere('shipment.sendDate < :nextMonthStartUtc', { nextMonthStartUtc })
-      .andWhere('shipment.statusId IN (:...countedStatuses)', { countedStatuses: this.countedStatuses })
+      .andWhere('shipment.statusId IN (:...countedStatuses)', {
+        countedStatuses: this.countedStatuses,
+      })
       .getMany();
 
     const metricsByStatus = new Map<number, ShipmentMetricsByStatusDto>();
@@ -319,7 +401,9 @@ export class ShipmentService {
       totalAmount,
       averageTicket,
       countedStatuses: this.countedStatuses,
-      byStatus: Array.from(metricsByStatus.values()).sort((a, b) => a.statusId - b.statusId),
+      byStatus: Array.from(metricsByStatus.values()).sort(
+        (a, b) => a.statusId - b.statusId,
+      ),
     };
   }
 

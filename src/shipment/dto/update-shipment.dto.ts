@@ -1,13 +1,29 @@
-import { IsString, IsNumber, IsOptional, MaxLength } from 'class-validator';
+import {
+  IsString,
+  IsNumber,
+  IsOptional,
+  IsUUID,
+  MaxLength,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class UpdateShipmentDto {
+  @ApiProperty({
+    description:
+      'ID del flete asociado (opcional, enviar null para desasociar)',
+    example: '550e8400-e29b-41d4-a716-446655440099',
+    required: false,
+    nullable: true,
+  })
+  @IsOptional()
+  @IsUUID()
+  freightId?: string | null;
 
   @ApiProperty({
     description: 'Descripción del paquete (opcional)',
     example: 'Paquete actualizado con documentos',
     maxLength: 100,
-    required: false
+    required: false,
   })
   @IsOptional()
   @IsString()
@@ -17,7 +33,7 @@ export class UpdateShipmentDto {
   @ApiProperty({
     description: 'ID de la ubicación (opcional)',
     example: 1,
-    required: false
+    required: false,
   })
   @IsOptional()
   @IsNumber()
@@ -26,7 +42,7 @@ export class UpdateShipmentDto {
   @ApiProperty({
     description: 'ID del estado (opcional)',
     example: 2,
-    required: false
+    required: false,
   })
   @IsOptional()
   @IsNumber()
@@ -36,7 +52,7 @@ export class UpdateShipmentDto {
     description: 'Valor declarado del envío (opcional)',
     example: '$150000 COP',
     maxLength: 50,
-    required: false
+    required: false,
   })
   @IsOptional()
   @IsString()

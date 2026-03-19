@@ -16,6 +16,7 @@ describe('ShipmentService', () => {
     save: jest.fn(),
     findOne: jest.fn(),
     find: jest.fn(),
+    count: jest.fn(),
     update: jest.fn(),
     delete: jest.fn(),
     createQueryBuilder: jest.fn(),
@@ -23,6 +24,7 @@ describe('ShipmentService', () => {
 
   const freightRepositoryMock = {
     findOne: jest.fn(),
+    update: jest.fn(),
   };
 
   const storageServiceMock = {
@@ -86,7 +88,9 @@ describe('ShipmentService', () => {
         packageDescription: 'Docs',
         shipmentValue: '$1000 COP',
       }),
-    ).rejects.toThrow('Freight with id 550e8400-e29b-41d4-a716-446655440099 not found');
+    ).rejects.toThrow(
+      'Freight with id 550e8400-e29b-41d4-a716-446655440099 not found',
+    );
   });
 
   it('should delete pdf from storage before removing shipment when pdfPath exists', async () => {
@@ -98,7 +102,9 @@ describe('ShipmentService', () => {
 
     await service.remove('shipment-1');
 
-    expect(storageServiceMock.deleteObject).toHaveBeenCalledWith('shipments/2026/03/shipment-1.pdf');
+    expect(storageServiceMock.deleteObject).toHaveBeenCalledWith(
+      'shipments/2026/03/shipment-1.pdf',
+    );
     expect(shipmentRepositoryMock.delete).toHaveBeenCalledWith('shipment-1');
   });
 
@@ -111,7 +117,9 @@ describe('ShipmentService', () => {
 
     await service.remove('shipment-2');
 
-    expect(storageServiceMock.deleteObject).toHaveBeenCalledWith('shipments/2026/03/shipment-2.pdf');
+    expect(storageServiceMock.deleteObject).toHaveBeenCalledWith(
+      'shipments/2026/03/shipment-2.pdf',
+    );
     expect(shipmentRepositoryMock.delete).toHaveBeenCalledWith('shipment-2');
   });
 
@@ -126,5 +134,59 @@ describe('ShipmentService', () => {
 
     expect(storageServiceMock.deleteObject).not.toHaveBeenCalled();
     expect(shipmentRepositoryMock.delete).toHaveBeenCalledWith('shipment-3');
+  });
+
+  it('should throw when updating freightId to a non-existing freight', async () => {
+    shipmentRepositoryMock.findOne.mockResolvedValueOnce({
+      id: 'shipment-4',
+      freightId: null,
+    });
+    freightRepositoryMock.findOne.mockResolvedValueOnce(null);
+
+    await expect(
+      service.update('shipment-4', {
+        freightId: '550e8400-e29b-41d4-a716-446655440099',
+      }),
+    ).rejects.toThrow(
+      'Freight with id 550e8400-e29b-41d4-a716-446655440099 not found',
+    );
+  });
+
+  it('should unassociate shipment and refresh freight metadata', async () => {
+    shipmentRepositoryMock.findOne
+      .mockResolvedValueOnce({
+        id: 'shipment-5',
+        freightId: 'freight-1',
+      })
+      .mockResolvedValueOnce({
+        id: 'shipment-5',
+        freightId: null,
+      });
+
+    shipmentRepositoryMock.update.mockResolvedValue({ affected: 1 });
+    shipmentRepositoryMock.count.mockResolvedValueOnce(0);
+
+    freightRepositoryMock.findOne.mockResolvedValueOnce({
+      id: 'freight-1',
+      consolidatedPdfPath:
+        'shipments/freights/2026/03/freight-1/consolidated.pdf',
+    });
+
+    await service.update('shipment-5', { freightId: null });
+
+    expect(shipmentRepositoryMock.update).toHaveBeenCalledWith(
+      'shipment-5',
+      expect.objectContaining({ freightId: null }),
+    );
+    expect(storageServiceMock.deleteObject).toHaveBeenCalledWith(
+      'shipments/freights/2026/03/freight-1/consolidated.pdf',
+    );
+    expect(shipmentRepositoryMock.count).toHaveBeenCalledWith({
+      where: { freightId: 'freight-1' },
+    });
+    expect(freightRepositoryMock.update).toHaveBeenCalledWith(
+      'freight-1',
+      expect.objectContaining({ totalPackages: 0, consolidatedPdfPath: null }),
+    );
   });
 });
