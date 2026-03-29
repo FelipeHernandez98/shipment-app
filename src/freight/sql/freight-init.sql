@@ -4,12 +4,16 @@ CREATE TABLE IF NOT EXISTS shipmentschema.freight (
   guide_code varchar(120) NOT NULL UNIQUE,
   origin_city varchar(80) NOT NULL,
   destination_city varchar(80) NOT NULL,
+  location_id smallint NOT NULL DEFAULT 0,
   total_packages integer NOT NULL DEFAULT 0,
   created_by_user_id uuid NOT NULL,
   consolidated_pdf_path varchar NULL,
   created_at timestamptz NOT NULL,
   updated_at timestamptz NULL
 );
+
+ALTER TABLE shipmentschema.freight
+  ADD COLUMN IF NOT EXISTS location_id smallint NOT NULL DEFAULT 0;
 
 -- Add freight reference into shipment table
 ALTER TABLE shipmentschema.shipment

@@ -77,6 +77,7 @@ describe('FreightService', () => {
 
   it('should return updated count when updating location', async () => {
     freightRepositoryMock.findOne.mockResolvedValue({ id: 'f-1' });
+    freightRepositoryMock.update.mockResolvedValue({ affected: 1 });
     shipmentRepositoryMock.update.mockResolvedValue({ affected: 3 });
 
     const result = await service.updateLocation('f-1', { locationId: 2 });
@@ -90,10 +91,15 @@ describe('FreightService', () => {
       { freightId: 'f-1' },
       expect.objectContaining({ locationId: 2 }),
     );
+    expect(freightRepositoryMock.update).toHaveBeenCalledWith(
+      'f-1',
+      expect.objectContaining({ locationId: 2 }),
+    );
   });
 
   it('should set delivered status when updating location to completed', async () => {
     freightRepositoryMock.findOne.mockResolvedValue({ id: 'f-2' });
+    freightRepositoryMock.update.mockResolvedValue({ affected: 1 });
     shipmentRepositoryMock.update.mockResolvedValue({ affected: 2 });
 
     await service.updateLocation('f-2', { locationId: LocationsEnum.COMPLETED });
@@ -127,6 +133,7 @@ describe('FreightService', () => {
       guideCode: 'FT-170320260000001',
       originCity: 'CUCUTA',
       destinationCity: 'BOGOTA',
+      locationId: LocationsEnum.BODEGA_CUCUTA,
       createdByUserId: '550e8400-e29b-41d4-a716-446655440000',
       totalPackages: 0,
       createdAt: new Date(),
@@ -147,6 +154,7 @@ describe('FreightService', () => {
         guideCode: 'FT-170320260000001',
         originCity: 'CUCUTA',
         destinationCity: 'BOGOTA',
+        locationId: LocationsEnum.BODEGA_CUCUTA,
       }),
     );
     expect(result).toEqual(createdFreight);

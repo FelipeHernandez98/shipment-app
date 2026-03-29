@@ -30,10 +30,13 @@ export class FreightService {
 
   async create(createFreightDto: CreateFreightDto): Promise<Freight> {
     await this.userService.findOne(createFreightDto.createdByUserId);
+    const locationId = createFreightDto.locationId ?? LocationsEnum.BODEGA_CUCUTA;
+    this.validateLocation(locationId);
     const guideCode = await this.freightTrackingSequenceService.generateGuideCode();
 
     const freight = this.freightRepository.create({
       ...createFreightDto,
+      locationId,
       originCity: createFreightDto.originCity.toUpperCase().trim(),
       destinationCity: createFreightDto.destinationCity.toUpperCase().trim(),
       guideCode,
@@ -131,6 +134,11 @@ export class FreightService {
   }> {
     await this.ensureFreightExists(id);
     this.validateLocation(updateLocationDto.locationId);
+
+    await this.freightRepository.update(id, {
+      locationId: updateLocationDto.locationId,
+      updatedAt: new Date(),
+    });
 
     const shipmentUpdatePayload: Partial<Shipment> = {
       locationId: updateLocationDto.locationId,

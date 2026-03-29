@@ -34,6 +34,13 @@ export class Freight {
   destinationCity: string;
 
   @ApiProperty({
+    description: 'ID de la ubicacion actual del flete',
+    example: 0,
+  })
+  @Column('int2', { name: 'location_id', default: 0 })
+  locationId: number;
+
+  @ApiProperty({
     description: 'Cantidad total de paquetes (envios) en el flete',
     example: 100,
   })

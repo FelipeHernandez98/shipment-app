@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsUUID, MaxLength } from 'class-validator';
+import { IsNumber, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 
 export class CreateFreightDto {
   @ApiProperty({
@@ -8,6 +8,15 @@ export class CreateFreightDto {
   })
   @IsUUID()
   createdByUserId: string;
+
+  @ApiProperty({
+    description: 'ID de la ubicacion inicial del flete',
+    example: 0,
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  locationId?: number;
 
   @ApiProperty({
     description: 'Ciudad de origen del flete',

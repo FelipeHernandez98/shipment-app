@@ -203,6 +203,74 @@ export class ShipmentController {
     return this.shipmentService.remove(id);
   }
 
+  @Post('daily-consolidated-pdf')
+  @Auth(Roles.administrator, Roles.user)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Generar PDF consolidado diario (relación de despachos)' })
+  @ApiQuery({ name: 'date', required: true, type: String, example: '2026-03-24', description: 'Fecha en formato YYYY-MM-DD' })
+  @ApiResponse({
+    status: 200,
+    description: 'PDF consolidado generado exitosamente',
+    schema: {
+      example: {
+        date: '2026-03-24',
+        totalShipments: 15,
+        pdfPath: 'uploads/pdfs/2026-03-24.pdf',
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'No hay envios para la fecha especificada' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  async generateDailyConsolidatedPdf(
+    @Query('date') date: string,
+    @GetUser() user: User,
+  ) {
+    return this.shipmentService.generateDailyConsolidatedPdf(date, user);
+  }
+
+  @Get('daily-consolidated-pdf/:date')
+  @Auth(Roles.administrator, Roles.user)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Descargar PDF consolidado diario y eliminarlo' })
+  @ApiProduces('application/pdf')
+  @ApiParam({ name: 'date', description: 'Fecha en formato YYYY-MM-DD', example: '2026-03-24' })
+  @ApiResponse({ status: 200, description: 'PDF descargado exitosamente' })
+  @ApiResponse({ status: 404, description: 'Archivo no encontrado' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  async downloadDailyConsolidatedPdf(@Param('date') date: string, @Res() res: Response) {
+    const pdfPath = `uploads/pdfs/${date}.pdf`;
+    const fullPath = path.join(process.cwd(), pdfPath);
+
+    if (!fs.existsSync(fullPath)) {
+      throw new BadRequestException(`Daily consolidated PDF not found for date ${date}. Please generate it first.`);
+    }
+
+    try {
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="consolidado-${date}.pdf"`);
+
+      const fileStream = fs.createReadStream(fullPath);
+
+      fileStream.on('end', () => {
+        // Eliminar el archivo después de que se envíe completamente
+        try {
+          fs.unlinkSync(fullPath);
+        } catch (deleteErr) {
+          console.error(`Error deleting file ${fullPath}:`, deleteErr);
+        }
+      });
+
+      fileStream.on('error', (err) => {
+        console.error(`Stream error for ${fullPath}:`, err);
+        res.status(500).send('Error downloading file');
+      });
+
+      fileStream.pipe(res);
+    } catch (error) {
+      throw new BadRequestException(`Error downloading daily consolidated PDF: ${error.message}`);
+    }
+  }
+
   private resolveLegacyLocalPdfPath(pdfPath: string): string | null {
     const normalizedPath = pdfPath.trim();
     if (!normalizedPath) {

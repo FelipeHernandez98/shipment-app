@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { CreateShipmentDto } from './dto/create-shipment.dto';
 import { UpdateShipmentDto } from './dto/update-shipment.dto';
-import { Repository } from 'typeorm';
+import { Repository, Between } from 'typeorm';
 import { Shipment } from './entities/shipment.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { TrackingSequenceService } from './tracking-sequence.service';
@@ -13,6 +13,7 @@ import { User } from 'src/user/entities/user.entity';
 import { PdfService } from '../pdf/pdf.service';
 import { LocationsEnum } from 'src/commons/enums/locations.enum';
 import { StorageService } from 'src/storage/storage.service';
+import { BadRequestException } from '@nestjs/common';
 import {
   ShipmentFinancialMetricsDto,
   ShipmentMetricsByStatusDto,
@@ -440,5 +441,37 @@ export class ShipmentService {
 
     const parsed = Number(numericMatch[0]);
     return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  async findByDate(date: string): Promise<Shipment[]> {
+    const targetDate = new Date(date);
+    const startOfDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 0, 0, 0);
+    const endOfDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 23, 59, 59);
+
+    const shipments = await this.shipmentRepository.find({
+      where: {
+        sendDate: Between(startOfDay, endOfDay),
+      },
+      relations: ['remitter', 'recipient', 'user', 'freight'],
+      order: { sendDate: 'ASC' },
+    });
+
+    return shipments;
+  }
+
+  async generateDailyConsolidatedPdf(date: string, user: User): Promise<any> {
+    const shipments = await this.findByDate(date);
+
+    if (shipments.length === 0) {
+      throw new BadRequestException(`No shipments found for date ${date}`);
+    }
+
+    const pdfPath = await this.pdfService.generateDailyConsolidatedGuide(shipments, date, user);
+
+    return {
+      date,
+      totalShipments: shipments.length,
+      pdfPath,
+    };
   }
 }

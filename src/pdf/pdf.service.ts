@@ -770,4 +770,268 @@ export class PdfService {
     const logoBuffer = fs.readFileSync(logoPath);
     return `data:image/png;base64,${logoBuffer.toString('base64')}`;
   }
+
+  async generateDailyConsolidatedGuide(shipments: any[], date: string, user: any): Promise<string> {
+    const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+      ...(executablePath ? { executablePath } : {}),
+    });
+
+    try {
+      const page = await browser.newPage();
+      const htmlContent = await this.generateDailyConsolidatedHtml(shipments, date, user);
+
+      await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+
+      const pdfBuffer = await page.pdf({
+        format: 'A4',
+        printBackground: true,
+      });
+
+      const pdfPath = this.buildDailyObjectKey(date);
+      const fullPath = path.join(process.cwd(), pdfPath);
+      const pdfDir = path.dirname(fullPath);
+
+      // Create directory if it doesn't exist
+      if (!fs.existsSync(pdfDir)) {
+        fs.mkdirSync(pdfDir, { recursive: true });
+      }
+
+      fs.writeFileSync(fullPath, pdfBuffer);
+
+      return pdfPath;
+    } finally {
+      await browser.close();
+    }
+  }
+
+  private buildDailyObjectKey(date: string): string {
+    return `uploads/pdfs/${date}.pdf`;
+  }
+
+  private async generateDailyConsolidatedHtml(
+    shipments: any[],
+    date: string,
+    user: any,
+  ): Promise<string> {
+    const logoDataUrl = this.getBrandLogoDataUrl();
+    const formattedDate = new Date(date).toLocaleDateString('es-CO');
+
+    // Generar códigos de barras para cada envío
+    const shipmentRows = await Promise.all(
+      shipments.map(async (shipment, index) => {
+        const barcodeDataUrl = await this.generateTrackingBarcode(shipment.trackingCode);
+        const recipientName = shipment.recipient
+          ? `${shipment.recipient.name} ${shipment.recipient.lastname}`
+          : 'N/A';
+        const recipientCity = shipment.recipient?.city?.toUpperCase() || 'N/A';
+        const recipientAddress = shipment.recipient?.address || 'N/A';
+        const recipientDocument = shipment.recipient?.documentNumber || 'N/A';
+        const shipmentValue = this.formatShipmentValue(shipment.shipmentValue);
+        const freightGuideCode = shipment.freight?.guideCode || 'N/A';
+        const shipmentTrackingCode = shipment.trackingCode || 'N/A';
+
+        return `
+          <tr>
+            <td class="cell-center">${index + 1}</td>
+            <td>${recipientName}</td>
+            <td>${recipientCity}</td>
+            <td>${recipientAddress}</td>
+            <td>${shipment.packageDescription || 'N/A'}</td>
+            <td>${recipientDocument}</td>
+            <td class="cell-center">1</td>
+            <td class="cell-center">${shipmentValue}</td>
+            <td class="cell-center">${freightGuideCode}</td>
+            <td class="cell-center">${shipmentTrackingCode}</td>
+            <td class="cell-barcode">
+              <img src="${barcodeDataUrl}" alt="Código ${shipment.trackingCode}" class="barcode-img" />
+            </td>
+          </tr>
+        `;
+      }),
+    );
+
+    const userCity = 'CUCUTA';
+
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    @page {
+      size: A4 landscape;
+      margin: 10mm;
+    }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      margin: 0;
+      padding: 10px;
+      color: #000;
+      background: #fff;
+      font-size: 11px;
+    }
+
+    .container {
+      width: 100%;
+      page-break-inside: avoid;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+      border: 1px solid #000;
+      padding: 8px;
+    }
+
+    .header-left {
+      flex: 1;
+    }
+
+    .header-right {
+      flex: 1;
+      text-align: right;
+    }
+
+    .logo {
+      max-width: 150px;
+      max-height: 40px;
+      margin-bottom: 8px;
+    }
+
+    .title {
+      font-size: 14px;
+      font-weight: bold;
+      margin: 0;
+      text-align: center;
+      border-bottom: 2px solid #000;
+      padding-bottom: 8px;
+      margin-bottom: 8px;
+    }
+
+    .info-row {
+      display: flex;
+      margin: 2px 0;
+      font-size: 10px;
+    }
+
+    .info-label {
+      font-weight: bold;
+      width: 80px;
+      min-width: 80px;
+    }
+
+    .info-value {
+      flex: 1;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+    }
+
+    thead {
+      background-color: #f0f0f0;
+      border: 1px solid #000;
+    }
+
+    th {
+      border: 1px solid #000;
+      padding: 4px 2px;
+      text-align: left;
+      font-weight: bold;
+      font-size: 9px;
+    }
+
+    td {
+      border: 1px solid #000;
+      padding: 2px 4px;
+      font-size: 9px;
+    }
+
+    .cell-center {
+      text-align: center;
+    }
+
+    .cell-barcode {
+      text-align: center;
+      padding: 1px;
+    }
+
+    .barcode-img {
+      max-width: 80px;
+      max-height: 30px;
+      height: auto;
+    }
+
+    tr:nth-child(even) {
+      background-color: #fafafa;
+    }
+
+    .footer {
+      margin-top: 12px;
+      text-align: center;
+      font-size: 9px;
+      border-top: 1px solid #000;
+      padding-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <h1 class="title">RELACIÓN DE DESPACHOS</h1>
+    <div class="header">
+      <div class="header-left">
+        <img src="${logoDataUrl}" alt="Marca Zenda" class="logo" />
+        <div class="info-row">
+          <span class="info-label">CIUDAD:</span>
+          <span class="info-value">${userCity}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">FECHA:</span>
+          <span class="info-value">${formattedDate}</span>
+        </div>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 3%">#</th>
+          <th style="width: 12%">DESTINATARIO</th>
+          <th style="width: 8%">CIUDAD</th>
+          <th style="width: 15%">DIRECCIÓN</th>
+          <th style="width: 12%">CONTENIDO</th>
+          <th style="width: 8%">DOCUMENTO</th>
+          <th style="width: 4%">UND</th>
+          <th style="width: 7%">DECL</th>
+          <th style="width: 7%">FLETE</th>
+          <th style="width: 8%">GUÍA ENVÍO</th>
+          <th style="width: 15%">GUÍAS</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${shipmentRows.join('\n')}
+      </tbody>
+    </table>
+
+    <div class="footer">
+      Total de envios: ${shipments.length} | Documento generado automáticamente por Zenda
+    </div>
+  </div>
+</body>
+</html>
+    `;
+  }
 }
